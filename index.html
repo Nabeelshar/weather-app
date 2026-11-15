@@ -1,0 +1,2234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="light" />
+<link rel="icon" href="data:," />
+<title>Not Boring Weather Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&family=Fredoka:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --ink:#282828; --red:#FF1F2C; --cyan:#26B7FF; --grey:#8a8a8a; }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{margin:0; font-family:'Archivo Black',system-ui,sans-serif; background:#2b2b2b; color:var(--ink);}
+  button{font-family:inherit; cursor:pointer;}
+  .mono{font-family:'JetBrains Mono',monospace;}
+  .app{position:relative; max-width:480px; margin:0 auto; height:100dvh; overflow:hidden; background:#fff; container-type:inline-size;}
+
+  /* ================= MAIN SCREEN (video frame 1-2) ================= */
+  #main-screen{position:absolute; inset:0; background:#FFFFFF; display:flex; flex-direction:column; cursor:pointer;}
+  .statusbar{display:flex; justify-content:space-between; align-items:center; padding:calc(10px + env(safe-area-inset-top)) 22px 0;}
+  .statusbar .time{font-family:-apple-system,'Inter',sans-serif; font-weight:700; font-size:15px; color:#000;}
+  .statusbar .sicons{display:flex; gap:6px; align-items:center; color:#000;}
+  .topbar{position:relative; display:flex; align-items:center; justify-content:center; padding:14px 20px 0; min-height:44px;}
+  .topbar .city{font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:700; letter-spacing:.42em; text-indent:.42em; color:#111;}
+  .menu-btn{position:absolute; right:18px; top:8px; width:34px; height:34px; border-radius:50%; border:1.5px solid #c9c9c9; background:#fff;
+            display:flex; align-items:center; justify-content:center; padding:0;}
+  .menu-btn i{width:7px; height:7px; border-radius:50%; background:#9a9a9a; display:block;}
+  .sun-zone{position:relative; margin-top:2px; flex:0 0 auto;}
+  .orbits{position:absolute; inset:0; width:100%; height:100%; pointer-events:none; overflow:visible;}
+  .sun-disc{position:relative; width:55%; aspect-ratio:1; margin:6px auto 0; border-radius:50%; overflow:hidden; z-index:2;
+    background:radial-gradient(circle at 50% 40%, #FF3B47 0%, var(--red) 58%, #F01627 100%);}
+  .sun-disc::after{content:""; position:absolute; inset:0; opacity:.16; mix-blend-mode:multiply;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.85'/%3E%3C/svg%3E");}
+  .birds{position:absolute; left:10.5%; top:31%; z-index:3; pointer-events:none;}
+  .giant-wrap{text-align:center; margin-top:-7.5vh; position:relative; z-index:4; pointer-events:none;}
+  .giant{font-family:'Anton',sans-serif; font-size:min(45vh,76vw); font-size:min(45vh,74cqw); line-height:.88; letter-spacing:-.01em; color:#222; display:inline-block; white-space:nowrap;
+    text-shadow:0 -9px 11px rgba(255,31,44,.22),2px 2px 0 #454545,4px 4px 0 #404040,6px 6px 0 #3a3a3a,8px 8px 0 #343434,10px 10px 0 #2e2e2e,
+      13px 13px 0 rgba(0,0,0,.45),17px 17px 0 rgba(0,0,0,.28),22px 22px 0 rgba(0,0,0,.15);}
+  .giant .one{margin-right:.015em;}
+  .giant .nine{position:relative;}
+  .cond-main{text-align:center; font-family:'Fredoka',sans-serif; font-weight:600; font-size:28px; color:#111; margin-top:1.2vh; letter-spacing:-.3px;}
+  .main-spacer{flex:1;}
+  .week-strip{display:grid; grid-template-columns:repeat(8,1fr); grid-template-rows:repeat(4,auto); grid-auto-flow:column; padding:0 10px calc(14px + env(safe-area-inset-bottom)); text-align:center; row-gap:5px;}
+  .week-strip .dl{font-family:'JetBrains Mono',monospace; font-size:9.5px; font-weight:700; letter-spacing:.08em; color:#9a9a9a;}
+  .week-strip .ic{height:26px; display:flex; align-items:center; justify-content:center;}
+  .week-strip .hi{font-family:'Archivo Black',sans-serif; font-size:16.5px; color:#111;}
+  .week-strip .lo{font-family:'JetBrains Mono',monospace; font-size:13.5px; color:#bdbdbd; font-weight:500;}
+
+  /* ================= EXPLODED / DETAIL VIEW ================= */
+  #detail{position:absolute; inset:0; z-index:20; display:none; flex-direction:column; overflow-y:auto;
+    background:radial-gradient(ellipse 120% 90% at 50% 38%, #F2F2F2 0%, #DEDEDE 55%, #B4B4B4 100%); color:#111;}
+  #detail.open{display:flex; animation:detailIn .45s cubic-bezier(.3,.8,.3,1);}
+  @keyframes detailIn{from{opacity:0}to{opacity:1}}
+  .d-status{display:flex; justify-content:space-between; align-items:center; padding:calc(10px + env(safe-area-inset-top)) 22px 0;}
+  .d-top{position:relative; display:flex; align-items:center; justify-content:center; padding:10px 52px 0; min-height:40px;}
+  .d-top .day-label{font-family:'JetBrains Mono',monospace; font-size:12.5px; font-weight:700; letter-spacing:.3em; text-indent:.3em; background:none; border:none; color:#111; padding:8px 4px;}
+  .d-close{position:absolute; left:14px; top:4px; width:40px; height:40px; border-radius:50%; border:1.5px solid #a9a9a9; background:transparent; font-size:16px; color:#333; display:flex; align-items:center; justify-content:center;}
+  .metric-nav{position:absolute; right:12px; top:4px; display:flex; gap:6px;}
+  .metric-nav button{width:40px; height:40px; border-radius:50%; border:1.5px solid #a9a9a9; background:transparent; font-size:19px; color:#333; display:flex; align-items:center; justify-content:center;}
+  .flip-zone{perspective:900px;}
+  #detail > *{flex:0 0 auto;}
+  .flip-inner{transform-style:preserve-3d;}
+  .flip-inner.flip{animation:flipIn .65s cubic-bezier(.3,.7,.3,1);}
+  @keyframes flipIn{0%{transform:rotateY(0)}100%{transform:rotateY(360deg)}}
+  .d-title{font-family:'Fredoka',sans-serif; font-weight:700; font-size:64px; line-height:1; text-align:center; margin:8px 0 0; letter-spacing:-1.5px; color:#111;}
+  .d-dots{text-align:center; margin-top:8px;}
+  .d-dots i{display:inline-block; width:6px; height:6px; border-radius:50%; background:#b5b5b5; margin:0 3px;}
+  .d-dots i.on{background:#111;}
+  .model-zone{position:relative; height:27vh; min-height:170px; display:flex; align-items:center; justify-content:center; overflow:visible;}
+  .model-giant{font-family:'Anton',sans-serif; font-size:min(25vh,60vw); font-size:min(25vh,58cqw); line-height:.9; color:#222; display:inline-block; white-space:nowrap;
+    text-shadow:2px 2px 0 #3d3d3d,4px 4px 0 #383838,6px 6px 0 #333,8px 8px 0 #2e2e2e,10px 10px 0 #292929,
+      13px 13px 0 rgba(0,0,0,.4),17px 17px 0 rgba(0,0,0,.24),22px 22px 0 rgba(0,0,0,.13);}
+  .model-giant.spin{animation:digitSpin .55s cubic-bezier(.3,.7,.3,1);}
+  @keyframes digitSpin{0%{transform:rotateY(0)}100%{transform:rotateY(360deg)}}
+  .model-sun{width:21vh; height:21vh; min-width:150px; min-height:150px; border-radius:50%; position:relative; overflow:hidden;
+    background:radial-gradient(circle at 50% 40%, #FF3B47 0%, var(--red) 58%, #F01627 100%);}
+  .model-sun::after{content:""; position:absolute; inset:0; opacity:.16; mix-blend-mode:multiply;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.85'/%3E%3C/svg%3E");}
+  .model-moon{width:20vh; height:20vh; min-width:140px; min-height:140px; border-radius:50%; position:relative; overflow:hidden;
+    background:radial-gradient(circle at 36% 32%, #3d3d3d 0%, #171717 55%, #060606 100%);
+    box-shadow:inset -14px -16px 30px rgba(0,0,0,.75), inset 10px 12px 24px rgba(255,255,255,.14), 0 10px 24px rgba(0,0,0,.18);}
+  .model-moon::after{content:""; position:absolute; width:96%; height:96%; border-radius:50%; left:9%; top:2%; opacity:0;
+    background:radial-gradient(circle at 40% 35%, #ffffff 0%, #f0f0f0 55%, #d9d9d9 100%);}
+  .model-moon.crescent{animation:moonSpin 1.6s ease;}
+  .model-moon.crescent::after{animation:crescentShow 1.6s ease;}
+  @keyframes moonSpin{0%{transform:rotateY(0)}50%{transform:rotateY(180deg)}100%{transform:rotateY(360deg)}}
+  @keyframes crescentShow{0%,100%{opacity:0}45%,60%{opacity:1}}
+  .cloud-cluster{position:relative; width:250px; height:150px;}
+  .cloud-cluster i{position:absolute; border-radius:50%; background:#101010;
+    box-shadow:inset -7px -9px 16px rgba(0,0,0,.6), inset 6px 8px 12px rgba(255,255,255,.15);}
+  .cloud-orbit{position:absolute; border:1.6px solid rgba(17,17,17,.75); border-radius:50%; pointer-events:none;}
+  .rock-scene{position:relative; width:280px; height:190px;}
+  .rain-drop{position:absolute; width:9px; height:22px; border-radius:6px; background:linear-gradient(180deg,#7FD8FF,var(--cyan)); animation:rainfall linear infinite;}
+  @keyframes rainfall{0%{transform:translateY(-56px); opacity:0}12%{opacity:1}88%{opacity:1}100%{transform:translateY(96px); opacity:0}}
+  /* data table */
+  .d-table{padding:2px 18px 0;}
+  .trow{display:flex; align-items:baseline; width:100%; background:none; border:none; padding:8px 14px; margin:3px 0;
+        font-family:'JetBrains Mono',monospace; font-size:12.5px; font-weight:700; letter-spacing:.14em; color:#111; text-align:left; border-radius:999px;}
+  .trow .leader{flex:1; border-bottom:2px dotted #9a9a9a; margin:0 10px; transform:translateY(-3px); min-width:14px;}
+  .trow .val{font-weight:700;}
+  .trow.sel{background:#111; color:#fff;}
+  .trow.sel .leader{border-bottom-color:rgba(255,255,255,.45);}
+  /* graph */
+  .graph-zone{padding:10px 18px 0;}
+  .graph-box{position:relative; height:104px;}
+  .graph-msg{display:flex; align-items:center; justify-content:center; height:104px; font-family:'JetBrains Mono',monospace;
+             font-size:12px; font-weight:700; letter-spacing:.18em; color:#555; text-align:center; padding:0 8px; white-space:pre-line; line-height:1.9;}
+  /* day slider */
+  .slider-zone{padding:14px 22px 0;}
+  .dslider{position:relative; height:34px; touch-action:none; cursor:pointer;}
+  .dslider .track{position:absolute; left:0; right:0; top:15px; height:4px; border-radius:2px; background:#c4c4c4;}
+  .dslider .fill{position:absolute; left:0; top:15px; height:4px; border-radius:2px; background:#111;}
+  .dslider .dot{position:absolute; top:12.5px; width:9px; height:9px; border-radius:50%; background:#a8a8a8; transform:translateX(-50%);}
+  .dslider .dot.passed{background:#111;}
+  .dslider .handle{position:absolute; top:17px; width:30px; height:30px; border-radius:50%; background:#111; transform:translate(-50%,-50%);
+                   box-shadow:0 2px 8px rgba(0,0,0,.35); z-index:2;}
+  /* DAY / WEEK toggle */
+  .dw-zone{display:flex; align-items:center; justify-content:center; gap:14px; padding:10px 0 calc(16px + env(safe-area-inset-bottom));}
+  .dw-zone .dw-lab{font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:700; letter-spacing:.22em; color:#9a9a9a; background:none; border:none; padding:8px 2px;}
+  .dw-zone .dw-lab.on{color:#111;}
+  .dw-switch{width:52px; height:28px; border-radius:999px; border:2px solid #111; background:transparent; position:relative; padding:0;}
+  .dw-switch i{position:absolute; top:50%; width:18px; height:18px; border-radius:50%; background:#111; transform:translateY(-50%); transition:left .2s;}
+  .dw-switch.day i{left:4px;} .dw-switch.week i{left:26px;}
+
+  /* ================= SHEETS (menu and everything behind it) ================= */
+  .sheet{position:absolute; inset:0; z-index:40; background:#fff; color:#111; display:none; flex-direction:column;}
+  .sheet.open{display:flex; animation:sheetUp .35s cubic-bezier(.3,.8,.3,1);}
+  @keyframes sheetUp{from{transform:translateY(5%)}to{transform:translateY(0)}}
+  .sheet-hd{display:flex; align-items:center; gap:10px; padding:calc(14px + env(safe-area-inset-top)) 16px 10px;}
+  .sheet-hd h2{font-family:'Archivo Black',sans-serif; font-size:22px; margin:0; letter-spacing:-.4px; flex:1;}
+  .back-btn{width:44px; height:44px; border-radius:50%; border:2px solid #111; background:transparent; color:#111; font-size:17px; display:flex; align-items:center; justify-content:center; flex:0 0 auto;}
+  .sheet-bd{flex:1; overflow-y:auto; padding:4px 20px calc(24px + env(safe-area-inset-bottom));}
+  .menu-item{display:flex; align-items:center; gap:12px; width:100%; text-align:left; background:none; border:none;
+             border-bottom:2px solid rgba(127,127,127,.2); padding:15px 2px; font-size:16px; font-weight:700; color:inherit; min-height:52px; font-family:'Archivo Black',sans-serif;}
+  .menu-item .arr{margin-left:auto; opacity:.45; font-weight:400;}
+  .menu-item .val{margin-left:auto; font-family:'JetBrains Mono',monospace; font-size:11.5px; opacity:.65; font-weight:400;}
+  .switch{margin-left:auto; width:52px; height:30px; border-radius:999px; background:rgba(127,127,127,.35); position:relative; flex:0 0 auto; border:none; padding:0;}
+  .switch::after{content:""; position:absolute; width:24px; height:24px; border-radius:50%; background:#fff; top:3px; left:3px; transition:left .2s; box-shadow:0 1px 4px rgba(0,0,0,.3);}
+  .switch.on{background:#111;} .switch.on::after{left:25px;}
+  .seg{display:flex; background:rgba(127,127,127,.18); border-radius:999px; padding:3px; gap:3px;}
+  .seg button{flex:1; border:none; background:transparent; border-radius:999px; font-weight:800; font-size:14px; color:inherit; min-height:40px; font-family:'Archivo Black',sans-serif;}
+  .seg button.sel{background:#111; color:#fff;}
+  .note{font-size:13.5px; line-height:1.6; opacity:.85; font-family:'JetBrains Mono',monospace;}
+  .sec-label{font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; letter-spacing:.24em; padding:22px 0 4px; opacity:.7;}
+  .theme-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .theme-card{border:3px solid transparent; border-radius:6px; padding:12px; text-align:left; min-height:86px;}
+  .theme-card.sel{border-color:#111;}
+  .theme-card .nm{font-family:'Archivo Black',sans-serif; font-size:16px;}
+  .theme-card .ed{font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:1.2px; opacity:.75; margin-top:3px;}
+  .theme-card .sw{display:flex; gap:5px; margin-top:9px;}
+  .theme-card .sw i{width:18px; height:18px; border-radius:50%; border:1px solid rgba(0,0,0,.2); display:block;}
+  .src-item{display:flex; gap:12px; align-items:center; width:100%; text-align:left; background:none; border:none;
+            border-bottom:2px solid rgba(127,127,127,.2); padding:15px 2px; font-size:15.5px; font-weight:700; color:inherit; min-height:52px; font-family:'Archivo Black',sans-serif;}
+  .src-item.sel{box-shadow:inset 4px 0 0 #111;}
+  .src-item .def{font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:1px; opacity:.6; font-weight:400; margin-left:auto;}
+  .tier{border-top:3px solid rgba(127,127,127,.3); padding:16px 0 6px; margin-bottom:10px;}
+  .tier.hot{border-top-color:#111;}
+  .tier h3{font-family:'Archivo Black',sans-serif; margin:0 0 4px; font-size:19px;}
+  .tier p{margin:0; font-size:13.5px; line-height:1.55; opacity:.85; font-family:'JetBrains Mono',monospace;}
+  .widget-card{border-bottom:2px solid rgba(127,127,127,.2); padding:12px 0;}
+  .widget-card .wt{font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700; letter-spacing:.22em; opacity:.6;}
+  .widget-card .wv{font-family:'Anton',sans-serif; font-size:22px; margin-top:4px;}
+  .widget-card .ws{font-size:12.5px; opacity:.75; margin-top:2px; line-height:1.45; font-family:'JetBrains Mono',monospace;}
+  .chk{display:flex; gap:10px; align-items:flex-start; padding:11px 0; border-bottom:2px solid rgba(127,127,127,.18);}
+  .chk .tx{flex:1;} .chk .tt{font-weight:700; font-size:14.5px; line-height:1.35; font-family:'Archivo Black',sans-serif;}
+  .chk .ds{font-size:12.5px; opacity:.7; line-height:1.5; margin-top:2px; font-family:'JetBrains Mono',monospace;}
+  .chip{flex:0 0 auto; font-family:'JetBrains Mono',monospace; font-size:9.5px; font-weight:700; letter-spacing:.6px; padding:5px 8px; border-radius:999px; margin-top:2px;}
+  .chip.done{background:#1f9d4d; color:#fff;} .chip.part{background:#e8a100; color:#231900;} .chip.miss{background:#d43a2f; color:#fff;} .chip.none{background:rgba(127,127,127,.3); color:inherit;}
+  .btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; border:none; border-radius:999px; padding:12px 22px; font-weight:800; font-size:15px; min-height:48px; font-family:'Archivo Black',sans-serif;}
+  .btn-dark{background:#111; color:#fff;}
+  #game-area{position:relative; height:330px; overflow:hidden; background:#FFB800;}
+  #game-area::after{content:""; position:absolute; left:0; right:0; bottom:0; height:34px; background:#111;
+    clip-path:polygon(0 60%,8% 25%,17% 55%,27% 15%,37% 50%,48% 28%,58% 58%,68% 20%,78% 52%,88% 30%,100% 55%,100% 100%,0 100%);}
+  .gcloud{position:absolute; border:none; background:#fff; border-radius:999px; height:44px; min-width:82px;
+          font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:700; letter-spacing:.1em; color:#111; z-index:2;}
+  .gcloud.thunder{background:#111; color:#FFB800;}
+  .g-score{display:flex; justify-content:space-between; font-family:'JetBrains Mono',monospace; font-size:13px; margin:12px 2px;}
+  /* ================= FIRST-LAUNCH INTRO — one auto-playing ~8s sequence (FirstLaunchIntro.mp4) ================= */
+  #onboarding{position:absolute; inset:0; z-index:90; background:#000; display:none;}
+  #onboarding.open{display:block;}
+  .intro-stage{position:absolute; inset:0; overflow:hidden; background:#000;}
+  .intro-status{position:absolute; top:0; left:0; right:0; z-index:6; display:flex; justify-content:space-between; align-items:center;
+    padding:calc(10px + env(safe-area-inset-top)) 22px 0; color:#fff; opacity:0; transition:opacity .5s ease; pointer-events:none;}
+  .intro-status.on{opacity:1;}
+  .intro-status .time{font-family:-apple-system,'Inter',sans-serif; font-weight:700; font-size:15px;}
+  .intro-status .sicons{display:flex; gap:6px; align-items:center;}
+  .iscene{position:absolute; inset:0; opacity:0; visibility:hidden; transition:opacity .45s ease, visibility 0s linear .45s; pointer-events:none; background:#000;}
+  .iscene.on{opacity:1; visibility:visible; transition:opacity .45s ease;}
+  .iscene .ob-frame{position:absolute; inset:0; display:flex; align-items:center; justify-content:center;}
+  .iscene .ob-frame svg{width:100%; height:100%;}
+  /* beat 1 — dim logo, then the tower fades in over it */
+  .intro-logo-open{position:absolute; left:0; right:0; top:21vh; text-align:center; z-index:2; opacity:0;}
+  .iscene.on .intro-logo-open{animation:logoOpen 1.15s ease both;}
+  @keyframes logoOpen{0%{opacity:0}30%{opacity:.5}62%{opacity:.5}100%{opacity:0}}
+  .intro-tower-frame{opacity:0;}
+  .iscene.on .intro-tower-frame{animation:towerIn 1.15s ease both;}
+  @keyframes towerIn{0%,42%{opacity:0; transform:scale(.965)}100%{opacity:1; transform:scale(1)}}
+  /* beat 2 — desert fly-through inside a rounded video frame */
+  .idesert{position:absolute; inset:12px; border-radius:28px; overflow:hidden;}
+  .idesert svg{width:100%; height:100%; display:block;}
+  .iscene.on .idesert svg{animation:desertFly 1.15s ease-out both;}
+  @keyframes desertFly{from{transform:scale(1.04)}to{transform:scale(1.17) translateY(-1.5%)}}
+  /* cream cards (pencil / cloudy / egg) */
+  .icard{position:absolute; left:6%; right:6%; top:6.5%; bottom:6.5%; border-radius:30px; overflow:hidden;}
+  /* beat 3 — pencil slowly turning, gold shards flying off */
+  .iscene.on .pencil-rot{transform-box:fill-box; transform-origin:50% 88%; animation:pencilSway 1.2s ease-in-out both;}
+  @keyframes pencilSway{from{transform:rotate(-4.5deg)}to{transform:rotate(4.5deg)}}
+  .iscene .shard{opacity:0;}
+  .iscene.on .shard{transform-box:fill-box; transform-origin:center; animation:shardFly 1.15s ease-out both;}
+  @keyframes shardFly{0%{transform:translate(0,0) rotate(0deg); opacity:0}22%{opacity:1}100%{transform:translate(var(--sx,30px),var(--sy,-24px)) rotate(170deg); opacity:0}}
+  /* beat 4 — MOSTLY CLOUDY card */
+  .mc-card{background:#fff; display:flex; flex-direction:column;}
+  .mc-digits{font-family:'Anton',sans-serif; font-size:172px; line-height:.78; letter-spacing:-5px; color:#131313; margin:-56px 0 0 10px;
+    text-shadow:3px 3px 0 #3c3c3c, 6px 6px 0 rgba(0,0,0,.4), 10px 10px 0 rgba(0,0,0,.18);}
+  .mc-title{font-family:'Anton',sans-serif; font-size:35px; letter-spacing:.05em; text-align:center; margin-top:10px; color:#1c1c1c; -webkit-text-stroke:1.4px #1c1c1c; color:transparent;}
+  .mc-circle{width:88px; height:88px; border-radius:50%; background:#CFCFCF; margin:18px auto 0; display:flex; align-items:center; justify-content:center;}
+  .mc-circle span{font-family:'Anton',sans-serif; font-size:23px; color:#2e2e2e; letter-spacing:.03em;}
+  .mc-tl{display:flex; align-items:center; gap:10px; margin:30px 14px 0;}
+  .mc-n44{font-family:'Archivo Black',sans-serif; font-size:24px; color:#111;}
+  .mc-track{position:relative; flex:1; height:34px; background:#D9D9D9;}
+  .mc-seg{position:absolute; top:0; bottom:0; background:#2FA8E0;}
+  .mc-n55{position:absolute; left:11%; top:50%; transform:translateY(-50%); font-family:'Archivo Black',sans-serif; font-size:20px; color:#fff;}
+  .mc-moon{position:absolute; left:47%; top:50%; width:16px; height:16px; border-radius:50%; transform:translateY(-50%); background:linear-gradient(90deg,#141414 50%,#f4f4f4 50%); border:1.5px solid #9a9a9a;}
+  .mc-hours{display:flex; justify-content:space-between; margin:9px 20px 0; font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:700; color:#333;}
+  .mc-foot{margin-top:auto; height:62px; background:#3A3A3A;}
+  /* beat 6 — deer, white specks falling */
+  .iscene .spk{opacity:0;}
+  .iscene.on .spk{animation:speckFall 1.05s linear both;}
+  .iscene.on .spk2{animation-delay:.18s;} .iscene.on .spk3{animation-delay:.34s;} .iscene.on .spk4{animation-delay:.1s;}
+  @keyframes speckFall{0%{transform:translateY(-18px); opacity:0}25%{opacity:.95}100%{transform:translateY(96px); opacity:0}}
+  /* beat 7 — morphing app icon */
+  .imorph{position:absolute; left:50%; top:50%; width:172px; height:172px; transform:translate(-50%,-58%);}
+  .imorph .box{position:absolute; inset:14px; background:#F5EFE2; border-radius:38px; display:flex; align-items:center; justify-content:center; box-shadow:0 14px 40px rgba(255,255,255,.10); overflow:hidden;}
+  .imorph .tick{position:absolute; background:#fff; border-radius:2px;}
+  .iscene.on .imorph .tick{animation:tickPulse 1.5s ease-out both;}
+  @keyframes tickPulse{0%{opacity:.15}30%{opacity:1}100%{opacity:.5}}
+  .mglyph{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; opacity:0;}
+  .iscene.on .mglyph{animation:morphSeq 1.5s linear both;}
+  .iscene.on .mglyph.d2{animation-delay:.3s;} .iscene.on .mglyph.d3{animation-delay:.6s;} .iscene.on .mglyph.d4{animation-delay:.9s;}
+  .iscene.on .mglyph.d5{animation-name:morphLast; animation-delay:1.2s;}
+  @keyframes morphSeq{0%{opacity:0; transform:scale(.7) rotate(-5deg)}5%{opacity:1; transform:scale(1) rotate(0deg)}15%{opacity:1}20%{opacity:0; transform:scale(1.16)}100%{opacity:0}}
+  @keyframes morphLast{0%{opacity:0; transform:scale(.7) rotate(-5deg)}5%{opacity:1; transform:scale(1) rotate(0deg)}100%{opacity:1; transform:scale(1)}}
+  /* beat 8 — white logo */
+  .intro-logo-final{position:absolute; left:0; right:0; top:38vh; text-align:center; opacity:0;}
+  .iscene.on .intro-logo-final{animation:logoFinal .95s ease both;}
+  @keyframes logoFinal{from{opacity:0; transform:scale(.96)}to{opacity:1; transform:scale(1)}}
+  /* SKIP — the only text in the intro */
+  .intro-skip{position:absolute; bottom:calc(30px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); z-index:8;
+    background:none; border:none; font-family:'JetBrains Mono',monospace; font-size:11.5px; font-weight:500; letter-spacing:.3em; text-indent:.3em; color:#8f8f8f; padding:14px 22px;}
+  /* WHERE ARE YOU? — shown when the intro ends or SKIP is tapped */
+  .intro-loc{position:absolute; inset:0; z-index:7; background:#000; display:none; overflow-y:auto;}
+  .intro-loc.on{display:block; animation:introLocIn .45s ease;}
+  @keyframes introLocIn{from{opacity:0}to{opacity:1}}
+  .ob-pin{margin-top:15vh; text-align:center; padding:0 26px;}
+  .ob-pin h3{font-family:'Anton',sans-serif; font-size:37px; letter-spacing:.04em; margin:26px 0 0; color:#fff; font-weight:400;}
+  .ob-pin p{font-family:'JetBrains Mono',monospace; font-size:10.5px; letter-spacing:.16em; line-height:2; color:#e8e8e8; margin:16px 0 0;}
+  .ob-findme{margin-top:9vh; background:transparent; border:1.6px solid #fff; color:#fff; border-radius:999px; padding:15px 58px;
+             font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:700; letter-spacing:.3em; text-indent:.3em; min-height:52px;}
+  @media (prefers-reduced-motion: reduce){
+    .iscene, .intro-status{transition:none;}
+    .iscene.on .intro-logo-open, .iscene.on .intro-tower-frame, .iscene.on .idesert svg, .iscene.on .pencil-rot,
+    .iscene.on .shard, .iscene.on .spk, .iscene.on .mglyph, .iscene.on .imorph .tick, .iscene.on .intro-logo-final{animation-duration:.01s !important;}
+  }
+
+  /* ================= PAYWALL (Mobbin Super) ================= */
+  #sheet-paywall{background:#ECECEC; color:#111; z-index:96;}
+  .pw-top{display:flex; justify-content:space-between; align-items:center; padding:calc(12px + env(safe-area-inset-top)) 20px 0;}
+  .pw-restore{font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; letter-spacing:.22em; background:none; border:none; color:#111; padding:10px 0;}
+  .pw-close{width:40px; height:40px; border:none; background:none; font-size:26px; color:#111; line-height:1;}
+  .pw-hero{position:relative; padding:18px 22px 0; min-height:148px;}
+  .pw-coin{position:absolute; right:0; top:0; width:150px; height:150px; pointer-events:none; z-index:3; animation:coinPass 9s ease-in-out infinite;}
+  .pw-coin svg{display:block; width:100%; height:100%;}
+  /* the coin spins while it sweeps down over the checklist, then returns to the corner — it never stays on the text */
+  @keyframes coinPass{0%,16%{transform:translate(0,0) scale(.8)}36%{transform:translate(-104px,118px) scale(1.85)}52%{transform:translate(-52px,148px) scale(2.1)}72%,100%{transform:translate(0,0) scale(.8)}}
+  .pw-list{position:relative; z-index:1;}
+  .pw-head{position:relative; font-family:'Archivo Black',sans-serif; font-size:41px; line-height:1.04; letter-spacing:-1px; margin:14px 0 0; max-width:250px;}
+  .pw-list{padding:20px 24px 0;}
+  .pw-item{display:flex; align-items:center; gap:13px; font-family:'Archivo Black',sans-serif; font-size:18.5px; padding:7px 0;}
+  .pw-item .pi{width:27px; height:27px; flex:0 0 auto; display:flex; align-items:center; justify-content:center;}
+  .pw-details{margin:14px 24px 0; background:none; border:none; padding:6px 0; font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; letter-spacing:.2em; color:#111;}
+  .pw-seg{display:flex; background:#DCDCDC; border-radius:999px; padding:4px; margin:18px 22px 0; gap:4px;}
+  .pw-seg button{flex:1; border:none; background:transparent; border-radius:999px; min-height:44px; font-family:'Archivo Black',sans-serif; font-size:15.5px; color:#555;}
+  .pw-seg button.sel-super{background:transparent; color:#fff;}
+  .pw-seg button.sel-app{background:transparent; color:#111;}
+  .pw-plans{padding:16px 22px 0;}
+  .pw-plan{position:relative; width:100%; text-align:left; background:#fff; border:2.5px solid transparent; border-radius:16px; padding:16px 18px; margin-bottom:12px; color:#111;}
+  .pw-plan.sel{border-color:#8B2EFF;}
+  .pw-plan .pt{display:flex; align-items:center; gap:9px; font-family:'Archivo Black',sans-serif; font-size:17.5px;}
+  .pw-plan .pp{font-family:'JetBrains Mono',monospace; font-size:12px; margin-top:6px; color:#444; line-height:1.6;}
+  .pw-check{width:23px; height:23px; border-radius:50%; border:2px solid #bbb; flex:0 0 auto; display:flex; align-items:center; justify-content:center; color:#fff; font-size:13px;}
+  .pw-plan.sel .pw-check{background:#8B2EFF; border-color:#8B2EFF;}
+  .pw-badge{position:absolute; top:-11px; right:14px; background:#8B2EFF; color:#fff; font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700; letter-spacing:.08em; padding:5px 10px; border-radius:999px;}
+  .pw-apppill{display:inline-block; background:#FFC400; color:#111; font-family:'Archivo Black',sans-serif; font-size:14px; padding:5px 16px; border-radius:999px;}
+  .pw-continue{margin:8px 22px 0; background:#111; color:#fff; border:none; border-radius:999px; min-height:56px; font-family:'Archivo Black',sans-serif; font-size:17px; width:calc(100% - 44px);}
+  .pw-allplans{display:block; margin:2px auto calc(16px + env(safe-area-inset-bottom)); background:none; border:none; font-family:'JetBrains Mono',monospace; font-size:12.5px; font-weight:500; color:#333; padding:10px 26px;}
+
+  /* ================= HOME — MOBBIN PARTLY CLOUDY VARIANT ================= */
+  .home-clouds{display:none; position:absolute; left:0; right:0; bottom:-24px; height:120px; z-index:3; pointer-events:none;}
+  #main-screen.partly .home-clouds{display:block;}
+  .home-clouds .shadow{position:absolute; border-radius:50%; background:#D9D9D9; filter:blur(1px); opacity:.85;}
+  .home-clouds .puff{position:absolute; border-radius:50%; background:#0d0d0d; box-shadow:inset -8px -10px 18px rgba(0,0,0,.65), inset 7px 9px 14px rgba(255,255,255,.28), 0 8px 18px rgba(0,0,0,.22);}
+  .home-spheres{display:none;}
+  #main-screen.partly .home-spheres{display:block;}
+  .home-spheres i{position:absolute; border-radius:50%; display:block;}
+  /* ================= SOURCE ANIMATIONS (base1/graphite *-animation.json, AppConfig.json, Animation-*.scn, Basic3DSpinner/NodeSpinner) ================= */
+  #main-screen{perspective:1100px; transition:background-color .8s ease, transform .45s ease;}
+  .scene3d{display:flex; flex-direction:column; flex:0 0 auto; transform-style:preserve-3d; will-change:transform;}
+  .scene3d.intro-spin{animation:introSpin 1.2s cubic-bezier(.3,.7,.3,1);}
+  @keyframes introSpin{from{transform:rotateY(0)}to{transform:rotateY(360deg)}}
+  /* idle-spin removed: the scene never loops a full turn by default */
+  .giant-wrap{perspective:900px;}
+  .giant{animation:giantSway 11s ease-in-out infinite alternate;}
+  @keyframes giantSway{from{transform:rotateY(-6deg)}to{transform:rotateY(6deg)}}
+  .sun-zone{perspective:950px;}
+  .sun-disc{animation:sunSway 9s ease-in-out infinite alternate;}
+  @keyframes sunSway{from{transform:rotateY(-14deg)}to{transform:rotateY(14deg)}}
+  .sun-disc.disc-out{animation:discOut .45s ease-in forwards;}
+  @keyframes discOut{to{transform:rotateY(360deg) scale(.25); opacity:.35}}
+  .sun-disc.disc-in{animation:discIn .45s ease-out;}
+  @keyframes discIn{from{transform:rotateY(-360deg) scale(.25); opacity:.35}to{transform:rotateY(0) scale(1); opacity:1}}
+  .sun-disc.moon{background:radial-gradient(circle at 38% 32%, #3d3d3d 0%, #171717 55%, #060606 100%);
+    box-shadow:inset 30px -6px 0 2px rgba(245,245,245,.95), inset -8px 10px 22px rgba(255,255,255,.10);}
+  #main-screen.night{background:#1E1E1E;}
+  #main-screen.night .statusbar .time, #main-screen.night .city, #main-screen.night .cond-main{color:#fff;}
+  #main-screen.night .statusbar .sicons{filter:invert(1);}
+  #main-screen.night .giant{color:#f2f2f2;}
+  #main-screen.night .week-strip .hi{color:#fff;}
+  #main-screen.night .menu-btn{background:transparent; border-color:#5c5c5c;}
+  #main-screen.night .menu-btn i{background:#d8d8d8;}
+  .app.exploded #main-screen{transform:scale(.965);}
+  .birds{animation:birdFly 26s linear infinite;}
+  @keyframes birdFly{0%{transform:translate(0,0); opacity:0}5%{opacity:1}88%{opacity:1}100%{transform:translate(46vw,-3.5vh); opacity:0}}
+  .home-clouds{display:block; opacity:0; visibility:hidden; transform:translateY(16px) scale(.96); transition:opacity .3s ease, transform .3s ease, visibility 0s linear .3s;}
+  #main-screen.partly .home-clouds{opacity:1; visibility:visible; transform:translateY(0) scale(1); transition:opacity .3s ease, transform .3s ease;}
+  .home-clouds .puff{animation:puffDrift 16s ease-in-out infinite alternate;}
+  .home-clouds .puff:nth-child(5){animation-duration:19s; animation-delay:-6s;}
+  .home-clouds .puff:nth-child(6){animation-duration:13.5s; animation-delay:-3s;}
+  .home-clouds .puff:nth-child(7){animation-duration:17.5s; animation-delay:-9s;}
+  .home-clouds .puff:nth-child(8){animation-duration:15s; animation-delay:-5s;}
+  .home-clouds .shadow{animation:puffDrift 21s ease-in-out infinite alternate-reverse;}
+  @keyframes puffDrift{from{transform:translate(-12px,0)}to{transform:translate(16px,-4px)}}
+  .cloud-cluster{animation:cloudIn .55s cubic-bezier(.3,.8,.3,1);}
+  @keyframes cloudIn{from{opacity:0; transform:scale(.82) translateY(14px)}to{opacity:1; transform:scale(1) translateY(0)}}
+  .cloud-cluster.cloud-out{animation:cloudOut .2s ease-in forwards;}
+  @keyframes cloudOut{to{opacity:0; transform:scale(.85) translateY(10px)}}
+  .cloud-cluster i{animation:cloudDrift 14s ease-in-out infinite alternate;}
+  @keyframes cloudDrift{from{transform:translate(-7px,0)}to{transform:translate(11px,-5px)}}
+  .rock-scene{animation:popIn .5s cubic-bezier(.3,.8,.3,1), rockSway 12s ease-in-out .5s infinite alternate;}
+  @keyframes popIn{from{opacity:0; transform:scale(.8)}to{opacity:1; transform:scale(1)}}
+  @keyframes rockSway{from{transform:rotateY(-4deg)}to{transform:rotateY(4deg)}}
+  .model-zone{perspective:900px;}
+  .bolt{position:absolute; z-index:3; animation:boltFlash 1.7s ease-in-out infinite; transform-origin:50% 0;}
+  @keyframes boltFlash{0%,55%,100%{opacity:.15; transform:scale(.8)}8%,20%{opacity:1; transform:scale(1.12)}14%{opacity:.3; transform:scale(.95)}}
+  .model-giant{animation:modelSway 9s ease-in-out infinite alternate;}
+  @keyframes modelSway{from{transform:rotateY(-5deg)}to{transform:rotateY(5deg)}}
+  .model-giant.scrubbing{animation:none; transition:transform .1s ease-out;}
+  .fast-spin{animation:fastSpinAnim .7s cubic-bezier(.3,.7,.3,1) !important;}
+  @keyframes fastSpinAnim{0%{transform:rotateY(0) scale(1)}50%{transform:rotateY(360deg) scale(1.07)}100%{transform:rotateY(720deg) scale(1)}}
+  .model-sun{animation:sunSway 8s ease-in-out infinite alternate;}
+  .vane-anim{animation:vaneSway 10s ease-in-out infinite alternate;}
+  @keyframes vaneSway{from{transform:rotateY(-12deg)}to{transform:rotateY(12deg)}}
+  .model-moon.crescent{animation:moonSpin 7s ease-in-out infinite;}
+  .model-moon.crescent::after{animation:crescentShow 7s ease-in-out infinite;}
+  @keyframes crescentShow{0%,100%{opacity:0}42%,58%{opacity:1}}
+  #detail.open{animation:detailIn .5s cubic-bezier(.3,.8,.3,1);}
+  @keyframes detailIn{0%{opacity:0; transform:scale(1.07)}55%{opacity:1; transform:scale(.996)}100%{opacity:1; transform:scale(1)}}
+  #detail.closing{animation:detailOut .3s ease-in forwards;}
+  @keyframes detailOut{from{opacity:1; transform:scale(1)}to{opacity:0; transform:scale(1.06)}}
+  #detail.shake .flip-zone{animation:camShake .45s ease;}
+  @keyframes camShake{0%{transform:translate(0,0)}18%{transform:translate(-5px,3px) rotate(-.5deg)}38%{transform:translate(5px,-3px) rotate(.5deg)}58%{transform:translate(-3px,-2px)}78%{transform:translate(3px,2px)}100%{transform:translate(0,0)}}
+  .week-strip .ic svg rect{animation:stripRain 1.1s linear infinite;}
+  @keyframes stripRain{0%{transform:translateY(-2px); opacity:.4}50%{opacity:1}100%{transform:translateY(2.5px); opacity:.4}}
+  .pw-hero{perspective:700px;}
+  .pw-coin svg{animation:coinSpin 6s linear infinite;}
+  @keyframes coinSpin{from{transform:rotateY(0)}to{transform:rotateY(360deg)}}
+  .pw-coin g{transform-box:fill-box; transform-origin:center; animation:sparkPulse 1.5s ease-in-out infinite;}
+  @keyframes sparkPulse{0%,100%{transform:scale(.7); opacity:.55}50%{transform:scale(1.25); opacity:1}}
+  .pw-seg{position:relative;}
+  .pw-seg button{position:relative; z-index:1; transition:color .25s;}
+  .pw-thumb{position:absolute; top:4px; bottom:4px; left:4px; width:calc(50% - 4px); border-radius:999px; background:#8B2EFF; transform:translateX(100%); transition:transform .32s cubic-bezier(.3,.8,.3,1), background .32s;}
+  .pw-continue{transition:transform .12s ease;}
+  .pw-continue:active{transform:scale(.955);}
+  .btn{transition:transform .12s ease;}
+  .btn:active{transform:scale(.96);}
+  body.motion-off *, body.motion-off *::before, body.motion-off *::after{animation-play-state:paused !important;}
+  @media (prefers-reduced-motion: reduce){
+    .rain-drop, .flip-inner.flip, .model-giant.spin, .model-moon.crescent, .giant, .sun-disc, .birds,
+    .cloud-cluster i, .bolt, .pw-coin, .scene3d, .home-clouds .puff, .model-sun, .vane-anim, .rock-scene{animation:none !important;}
+  }
+  /* ================= ONE INTEGRATED SCENE (Main.scn: one camera, one light, fog plane) ================= */
+  .scene3d{position:relative;}
+  .orbits{transform-origin:50% 46%; will-change:transform;}
+  .bird{position:absolute; left:0; top:0; width:30px; height:20px; pointer-events:none; opacity:0; will-change:transform;}
+  .bird svg{display:block; animation:flap .5s ease-in-out infinite alternate; transform-origin:50% 60%;}
+  @keyframes flap{from{transform:scaleY(.7)}to{transform:scaleY(1.15)}}
+  .scene-clouds{position:absolute; inset:0; overflow:hidden; pointer-events:none; opacity:0; visibility:hidden; transition:opacity .3s ease, visibility 0s linear .3s;}
+  #main-screen.partly .scene-clouds{opacity:1; visibility:visible; transition:opacity .3s ease;}
+  .c-puff{position:absolute; left:0; top:0; will-change:transform; pointer-events:none;}
+  .c-puff i{position:absolute; display:block; border-radius:50%; background:#101010;
+    box-shadow:inset -7px -9px 16px rgba(0,0,0,.6), inset 6px 8px 12px rgba(255,255,255,.15);}
+  .c-puff.far i{background:#3d3d3d; box-shadow:inset -6px -8px 14px rgba(0,0,0,.5), inset 5px 7px 10px rgba(255,255,255,.2);}
+  .scene-fog{position:absolute; inset:0; pointer-events:none; z-index:8; opacity:0;}
+  #main-screen.shake .scene3d{animation:camShake .45s ease;}
+  .haptic-pulse{animation:hPulse .38s ease;}
+  .haptic-pulse-short{animation:hPulse .24s ease;}
+  @keyframes hPulse{0%{transform:scale(1)}30%{transform:scale(1.006)}100%{transform:scale(1)}}
+  @media (prefers-reduced-motion: reduce){ .bird svg, .sun-aura{animation:none !important;} }
+  /* ================= EVENTS OVERLAY + NEW FLOW SCREENS ================= */
+  #event-overlay{position:absolute; inset:0; z-index:85; background:rgba(10,10,10,.93); color:#fff; display:none; align-items:center; justify-content:center; text-align:center; padding:30px;}
+  #event-overlay.open{display:flex; animation:detailIn .4s ease;}
+  #event-overlay .ev-big{font-family:'Fredoka',sans-serif; font-weight:700; font-size:42px; line-height:1.18;}
+  #event-overlay .ev-sub{font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.24em; margin-top:16px; color:#bbb; line-height:2;}
+  .icon-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:12px;}
+  .appicon{border:3px solid transparent; border-radius:20px; padding:6px; background:none; color:inherit;}
+  .appicon.sel{border-color:#111;}
+  .appicon .box{border-radius:16px; aspect-ratio:1; display:flex; align-items:center; justify-content:center; box-shadow:inset 0 0 0 1px rgba(0,0,0,.14);}
+  .appicon .nm{font-family:'JetBrains Mono',monospace; font-size:9px; font-weight:700; letter-spacing:.05em; margin-top:5px; text-align:center;}
+  .loc-row{display:flex; align-items:center; gap:8px; padding:11px 2px; border-bottom:2px solid rgba(127,127,127,.2);}
+  .loc-row .ln{flex:1; font-family:'Archivo Black',sans-serif; font-size:15px;}
+  .loc-row .lt{font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:.1em; opacity:.55; display:block; margin-top:2px;}
+  .loc-row button{width:36px; height:36px; border-radius:50%; border:1.5px solid #a9a9a9; background:none; font-size:14px; color:inherit; flex:0 0 auto;}
+  .loc-search{width:100%; padding:13px 16px; border:2px solid #111; border-radius:999px; font-family:'JetBrains Mono',monospace; font-size:13px; margin-top:10px; background:#fff; color:#111;}
+  .ev-row{display:flex; align-items:baseline; gap:10px; width:100%; text-align:left; background:none; border:none; border-bottom:2px solid rgba(127,127,127,.2); padding:14px 2px; color:inherit;}
+  .ev-row .ed{font-family:'JetBrains Mono',monospace; font-size:10.5px; font-weight:700; letter-spacing:.12em; opacity:.55; white-space:nowrap;}
+  .ev-row .eg{font-family:'Archivo Black',sans-serif; font-size:16.5px;}
+  .demod-card{border-bottom:2px solid rgba(127,127,127,.2); padding:10px 0;}
+  .demod-card .dt{font-family:'Archivo Black',sans-serif; font-size:14.5px;}
+  .demod-card .dl2{font-family:'JetBrains Mono',monospace; font-size:10.5px; line-height:1.9; opacity:.85; margin-top:3px;}
+  .hourly-table{width:100%; border-collapse:collapse; font-family:'JetBrains Mono',monospace; font-size:10px;}
+  .hourly-table th,.hourly-table td{padding:5px 3px; border-bottom:1px solid rgba(127,127,127,.25); text-align:right; white-space:nowrap;}
+  .hourly-table th:first-child,.hourly-table td:first-child{text-align:left;}
+  .hourly-table td:nth-child(2){white-space:normal; word-break:break-word;}
+  .hourly-table td:nth-child(2){text-align:left;}
+  .share-box{width:100%; min-height:108px; border:2px solid #111; border-radius:12px; padding:14px; font-family:'JetBrains Mono',monospace; font-size:12.5px; line-height:1.7; background:#fff; color:#111;}
+  .alert-card{border:2.5px solid #111; border-radius:14px; padding:16px; margin-top:12px;}
+  .alert-card .st{font-family:'JetBrains Mono',monospace; font-size:10.5px; font-weight:700; letter-spacing:.22em; color:#d43a2f;}
+  /* ===== UNIFIED SCENE v2 — Main.scn: ONE camera, ONE clock, sun+birds+lines+clouds+digits together ===== */
+  #main-screen{perspective:1200px;}
+  .scene3d{transform-style:preserve-3d; animation:sceneBreathe 7s ease-in-out infinite alternate;}
+  @keyframes sceneBreathe{from{transform:rotateX(1.2deg) rotateY(-2.2deg)}to{transform:rotateX(-1deg) rotateY(2.2deg)}}
+  .scene3d.intro-spin{animation:introSpinFull 1.6s cubic-bezier(.22,.9,.28,1) !important;}
+  @keyframes introSpinFull{0%{transform:rotateY(0) scale(.82); opacity:.25}55%{opacity:1}100%{transform:rotateY(360deg) scale(1)}}
+  /* idleSpinFull removed: firstRunComplete settles the scene face-on after one intro turn */
+  /* sun: one flat grainy disc — no rays, no spikes, no aura, no pulse; only the thin orbit arcs cross it */
+  .sun-disc{overflow:hidden;}
+  .sun-core{position:absolute; inset:0; border-radius:50%; overflow:hidden; background:radial-gradient(circle at 50% 40%, #FF3B47 0%, #FF1F2C 58%, #F01627 100%); }
+  .sun-disc.moon .sun-core{background:radial-gradient(circle at 38% 32%, #3d3d3d 0%, #171717 55%, #060606 100%);}
+  /* orbit lines belong to the scene and keep turning around the sun */
+  /* birds are scene nodes: always looping, never a static strip */
+  .bird{opacity:1 !important; filter:drop-shadow(0 1px 0 rgba(0,0,0,.15));}
+  .bird svg{animation:flap .42s ease-in-out infinite alternate !important;}
+  /* clouds live in the scene at ALL times: faint wisps on Clear, full puffs on Partly */
+  .scene-clouds{opacity:.38 !important; visibility:visible !important;}
+  #main-screen.partly .scene-clouds{opacity:1 !important;}
+  .scene-clouds .c-puff{transition:opacity .3s ease;}
+  /* giant digits float WITH the scene, not pasted on top */
+  .giant-wrap{animation:digitFloat 5.5s ease-in-out infinite alternate;}
+  @keyframes digitFloat{from{transform:translateY(0) rotateY(-3deg)}to{transform:translateY(-6px) rotateY(3deg)}}
+  body.motion-off .scene3d, body.motion-off .sun-disc::before, body.motion-off .orbits, body.motion-off .giant-wrap{animation-play-state:paused !important;}
+  /* ===== FIX PASS — scene sits still face-on by default; spin only on intro / sun-moon tap / slider scrub ===== */
+  .scene3d{animation:none;}
+  .scene3d.idle-spin{animation:none !important;}
+  .giant{animation:none;}
+  .giant-wrap{animation:none;}
+  .sun-disc{animation:none;}
+  .model-giant{animation:none;}
+  /* exploded-view panels: no horizontal scrollbar / overflow */
+  #detail{overflow-x:hidden;}
+  .sheet{overflow-x:hidden;}
+  .sheet-bd{overflow-x:hidden;}
+  .graph-box{overflow:hidden;}
+  .model-zone{overflow-x:clip;}
+  .d-table{max-width:100%;}
+  /* day slider knob: default on day 0, slides to the selected day */
+  .dslider .handle{left:0%; transition:left .18s ease;}
+  .sr-only{position:absolute !important; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap;}
+  /* intro location screen — city entry, explainer note, skip link */
+  .ob-city{margin-top:22px; width:100%; max-width:300px; padding:13px 16px; border:2px solid #fff; border-radius:999px; background:#111; color:#fff; font-family:'JetBrains Mono',monospace; font-size:13px; text-align:center;}
+  .ob-city::placeholder{color:#aaa;}
+  .ob-city-go{margin-top:12px; background:#fff; border:none; color:#000; border-radius:999px; padding:13px 34px; font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:700; letter-spacing:.24em; text-indent:.24em; min-height:48px;}
+  .ob-loc-note{margin-top:16px; font-family:'JetBrains Mono',monospace; font-size:10.5px; letter-spacing:.08em; line-height:1.9; color:#FFD9DE; max-width:320px; margin-left:auto; margin-right:auto; display:none;}
+  .ob-loc-skip{display:inline-block; margin-top:20px; background:none; border:none; color:#fff; text-decoration:underline; font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:700; letter-spacing:.3em; text-indent:.3em; padding:12px;}
+  .intro-loc .ob-pin{margin-top:6vh; padding-bottom:60px;}
+  .intro-loc .ob-pin svg{width:104px; height:125px;}
+  .intro-loc .ob-findme{margin-top:4vh;}
+  /* ===== FIX PASS 2 — flat sun (no rays / aura / pulse), Mobbin partly cluster, real digit build, timeline bar, trailer night + widgets, exploded callouts ===== */
+  /* menu button: grey hexagon inside the thin circle */
+  .menu-btn svg{display:block;}
+  /* digits — extrusion lives on an underlay copy; the face is a gradient (red tint where the sun meets the top, bevel band under it) */
+  .giant-stack{position:relative; display:inline-block;}
+  .giant-under{position:absolute; left:0; top:0; font-family:'Anton',sans-serif; font-size:min(45vh,76vw); font-size:min(45vh,74cqw); line-height:.88; letter-spacing:-.01em; color:#3d3d3d; white-space:nowrap; pointer-events:none;
+    text-shadow:0 -9px 11px rgba(255,31,44,.22),2px 2px 0 #454545,4px 4px 0 #404040,6px 6px 0 #3a3a3a,8px 8px 0 #343434,10px 10px 0 #2e2e2e,
+      13px 13px 0 rgba(0,0,0,.45),17px 17px 0 rgba(0,0,0,.28),22px 22px 0 rgba(0,0,0,.15);}
+  .giant{position:relative; text-shadow:none; color:transparent; -webkit-background-clip:text; background-clip:text;
+    background-image:linear-gradient(180deg, #FF4038 0%, #DE3226 4%, #5A2620 9%, #38302C 13%, #242424 19%, #222222 100%);}
+  .giant .one, .giant-under .one{display:inline-block; transform:scaleX(.78); transform-origin:100% 50%;}
+  .giant .nine{position:relative;}
+  .giant .nine::after{content:""; position:absolute; left:36%; top:10%; width:.05em; height:37%; border-radius:3px; background:var(--field,#fff);}
+  .model-giant{text-shadow:0 -7px 10px rgba(255,31,44,.25),2px 2px 0 #3d3d3d,4px 4px 0 #383838,6px 6px 0 #333,8px 8px 0 #2e2e2e,10px 10px 0 #292929,
+    13px 13px 0 rgba(0,0,0,.4),17px 17px 0 rgba(0,0,0,.24),22px 22px 0 rgba(0,0,0,.13);}
+  /* night (trailer "CLEAR 11PM"): near-black digits with a lit bevel, slit shows the field */
+  #main-screen.night{background:#212121;}
+  #main-screen.night .giant{color:transparent; background-image:linear-gradient(180deg, #4c4c4c 0%, #191919 32%, #0b0b0b 100%);}
+  #main-screen.night .giant-under{color:#060606;
+    text-shadow:0 -2px 3px rgba(255,255,255,.20),2px 2px 0 #2c2c2c,4px 4px 0 #262626,6px 6px 0 #202020,8px 8px 0 #1a1a1a,10px 10px 0 #141414,
+      14px 14px 0 rgba(0,0,0,.55),19px 19px 0 rgba(0,0,0,.3);}
+  #main-screen.night .giant .nine::after{background:#212121;}
+  .sun-disc.moon .sun-core{box-shadow:inset 30px -6px 0 2px rgba(245,245,245,.95), inset -8px 10px 22px rgba(255,255,255,.10);}
+  /* Partly Cloudy (Mobbin): matte black bubble cluster over the sun's lower edge, grey shadow-clouds behind/below, red-tinted edge spheres */
+  .partly-cluster{display:none; position:absolute; left:50%; top:50%; transform:translateX(-50%); width:126%; height:54%; z-index:4; pointer-events:none;}
+  #main-screen.partly .partly-cluster{display:block;}
+  .pc-shadow{position:absolute; border-radius:50%; background:#C8C8C8; filter:blur(7px); opacity:.8; z-index:1;}
+  .pc-ball{position:absolute; border-radius:50%; background:#101010; z-index:2; box-shadow:inset -10px -13px 24px rgba(0,0,0,.6), inset 8px 10px 18px rgba(255,255,255,.15);}
+  .pc-edge{position:absolute; border-radius:50%; z-index:2; box-shadow:inset -4px -5px 10px rgba(0,0,0,.55);}
+  #main-screen.partly .scene-clouds{opacity:.14 !important;}
+  #main-screen.partly .home-clouds{opacity:0 !important; visibility:hidden !important;}
+  /* timeline bar (trailer + intro card): rounded track, blue segment, 44 / 55, moon-dot handle, hour marks, time circle */
+  .tl-circle{width:56px; height:56px; border-radius:50%; background:#C9C9C9; color:#2b2b2b; font-family:'Anton',sans-serif; font-size:17px; letter-spacing:.05em; display:flex; align-items:center; justify-content:center; margin:0 auto 8px;}
+  .dslider{height:auto;}
+  .tl-track{position:relative; height:36px; border-radius:999px; background:#E2E2E2;}
+  .tl-clip{position:absolute; inset:0; border-radius:999px; overflow:hidden;}
+  .tl-blue{position:absolute; top:0; bottom:0; left:22%; width:27%; background:#2FA8E0;}
+  .tl-blue2{position:absolute; top:0; bottom:0; right:0; width:9%; background:#2FA8E0;}
+  .tl-n44{position:absolute; left:5.5%; top:50%; transform:translateY(-50%); font-family:'Archivo Black',sans-serif; font-size:19px; color:#111; z-index:2;}
+  .tl-n55{position:absolute; left:0; right:0; top:50%; transform:translateY(-50%); text-align:center; font-family:'Archivo Black',sans-serif; font-size:19px; color:#0B2E44;}
+  .tl-moon{position:absolute; top:50%; left:0%; width:21px; height:21px; border-radius:50%; transform:translate(-50%,-50%); z-index:3; cursor:pointer;
+    background:linear-gradient(90deg,#141414 50%,#FFFFFF 50%); box-shadow:0 0 0 2px rgba(255,255,255,.9), 0 1px 5px rgba(0,0,0,.35); transition:left .18s ease;}
+  .tl-hours{display:flex; justify-content:space-between; padding:7px 2px 0; font-family:'JetBrains Mono',monospace; font-size:10.5px; font-weight:700; color:#6a6a6a;}
+  /* widgets (trailer home-screen frames): dark grey rounded cards */
+  .wx-card{background:#2C2C2E; color:#fff; border-radius:26px; padding:18px 18px 14px; margin-top:14px;}
+  .wx-top{display:flex; align-items:flex-start; gap:12px;}
+  .wx-big{font-family:'Anton',sans-serif; font-size:64px; line-height:.9;}
+  .wx-place{margin-top:5px;}
+  .wx-place .wp1{display:block; font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:.18em; color:#B9B9BE;}
+  .wx-place .wp2{display:block; font-family:'Archivo Black',sans-serif; font-size:21px; margin-top:3px;}
+  .wx-icon{margin-left:auto; flex:0 0 auto;}
+  .wx-bar{position:relative; height:30px; border-radius:999px; background:#6E6E73; margin-top:16px; overflow:hidden;}
+  .wx-blue{position:absolute; top:0; bottom:0; left:0; width:56%; background:#2FA8E0; display:flex; align-items:center; justify-content:flex-end; padding-right:12px;}
+  .wx-blue b{font-family:'Archivo Black',sans-serif; font-size:17px; color:#fff;}
+  .wx-n49{position:absolute; right:12px; top:50%; transform:translateY(-50%); font-family:'Archivo Black',sans-serif; font-size:15px; color:#D9D9DE;}
+  .wx-moon{position:absolute; top:50%; width:15px; height:15px; border-radius:50%; transform:translate(-50%,-50%); background:linear-gradient(90deg,#141414 50%,#fff 50%); z-index:2;}
+  .wx-hours{display:flex; justify-content:space-between; margin-top:6px; font-family:'JetBrains Mono',monospace; font-size:8.5px; color:#8E8E93;}
+  .wx-row{display:flex; gap:12px; margin-top:12px;}
+  .wx-sq{flex:1; background:#2C2C2E; color:#fff; border-radius:26px; padding:14px; min-height:136px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:7px;}
+  .wx-sq .wx-sq-num{font-family:'Anton',sans-serif; font-size:46px; line-height:1;}
+  .wx-sq .wx-sq-lab{font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:.16em; color:#B9B9BE;}
+  /* exploded view callouts (trailer "SMART" frame): mono labels + thin leader lines around the model */
+  .model-wrap{position:relative;}
+  #callouts{position:absolute; inset:0; pointer-events:none; z-index:5;}
+  #callouts svg{position:absolute; inset:0; width:100%; height:100%;}
+  #callouts line{stroke:#111; stroke-width:1;}
+  .co-lab{position:absolute; font-family:'JetBrains Mono',monospace; font-size:9.5px; font-weight:700; letter-spacing:.13em; line-height:1.95; color:#111; white-space:nowrap;}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- ============ MAIN SCREEN — LISBON, GRAPHITE, VIDEO FRAME 1 ============ -->
+  <div id="main-screen" role="button" aria-label="Lisbon weather, 19 degrees, clear. Tap to open the detailed view.">
+    <div class="statusbar" aria-hidden="true">
+      <span class="time">9:41</span>
+      <span class="sicons">
+        <svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" fill="#000"/><rect x="4.5" y="5" width="3" height="6" fill="#000"/><rect x="9" y="2.5" width="3" height="8.5" fill="#000"/><rect x="13.5" y="0" width="3" height="11" fill="#000"/></svg>
+        <svg width="16" height="11" viewBox="0 0 16 12" fill="none" stroke="#000" stroke-width="1.8" stroke-linecap="round"><path d="M1.5 4.2a10 10 0 0 1 13 0"/><path d="M4 7a6.4 6.4 0 0 1 8 0"/><circle cx="8" cy="10" r="1.3" fill="#000" stroke="none"/></svg>
+        <svg width="25" height="12" viewBox="0 0 25 12"><rect x="0.7" y="0.7" width="20" height="10.6" rx="3" fill="none" stroke="#000" opacity=".45"/><rect x="2.2" y="2.2" width="15" height="7.6" rx="1.6" fill="#000"/><path d="M22.6 4v4a2.2 2.2 0 0 0 0-4z" fill="#000" opacity=".45"/></svg>
+      </span>
+    </div>
+    <div class="topbar">
+      <span class="city">LISBON</span>
+      <button class="menu-btn" id="btn-menu" aria-label="Open menu"><svg width="15" height="15" viewBox="0 0 20 20" aria-hidden="true"><polygon points="10,1.6 17,5.6 17,14.4 10,18.4 3,14.4 3,5.6" fill="#B9B9B9"/></svg></button>
+    </div>
+    <div class="scene3d" id="scene3d">
+    <span class="bird" id="bird-0" style="z-index:1" aria-hidden="true"><svg width="30" height="20" viewBox="0 0 24 16" fill="none" stroke="#111" stroke-width="2.4" stroke-linecap="round"><path d="M2 12 Q7 5 12 11 Q17 5 22 12"/></svg></span>
+    <span class="bird" id="bird-1" style="z-index:5" aria-hidden="true"><svg width="26" height="18" viewBox="0 0 24 16" fill="none" stroke="#111" stroke-width="2.4" stroke-linecap="round"><path d="M2 12 Q7 5 12 11 Q17 5 22 12"/></svg></span>
+    <span class="bird" id="bird-2" style="z-index:1" aria-hidden="true"><svg width="22" height="15" viewBox="0 0 24 16" fill="none" stroke="#111" stroke-width="2.4" stroke-linecap="round"><path d="M2 12 Q7 5 12 11 Q17 5 22 12"/></svg></span>
+    <div class="scene-clouds" id="scene-clouds" aria-hidden="true"></div>
+    <div class="sun-zone" id="sun-zone" aria-hidden="true">
+      <svg class="orbits" viewBox="0 0 360 210" preserveAspectRatio="none">
+        <path d="M-40 195 C 100 40, 260 5, 400 130" fill="none" stroke="#d9d9d9" stroke-width="1.4"/>
+        <path d="M-40 25 C 120 175, 280 195, 400 35" fill="none" stroke="#e3e3e3" stroke-width="1.2"/>
+        <path d="M-40 120 C 130 90, 250 120, 400 84" fill="none" stroke="#dedede" stroke-width="1.1"/>
+      </svg>
+      <div class="sun-disc" id="sun-disc"><span class="sun-core" aria-hidden="true"></span></div>
+      <div class="partly-cluster" aria-hidden="true">
+        <span class="pc-shadow" style="left:4%; bottom:-6%; width:52%; height:36%;"></span>
+        <span class="pc-shadow" style="left:46%; bottom:-10%; width:58%; height:38%;"></span>
+        <span class="pc-ball" style="left:2%; bottom:32%; width:15%; aspect-ratio:1;"></span>
+        <span class="pc-ball" style="left:14%; bottom:14%; width:22%; aspect-ratio:1;"></span>
+        <span class="pc-ball" style="left:33%; bottom:28%; width:18%; aspect-ratio:1;"></span>
+        <span class="pc-ball" style="left:45%; bottom:6%; width:21%; aspect-ratio:1;"></span>
+        <span class="pc-ball" style="left:65%; bottom:18%; width:20%; aspect-ratio:1;"></span>
+        <span class="pc-ball" style="left:83%; bottom:36%; width:13%; aspect-ratio:1;"></span>
+        <span class="pc-edge" style="left:-3%; bottom:6%; width:12%; aspect-ratio:1; background:radial-gradient(circle at 76% 45%, rgba(255,31,44,.6) 0%, #161616 58%);"></span>
+        <span class="pc-edge" style="right:-3%; bottom:10%; width:11%; aspect-ratio:1; background:radial-gradient(circle at 24% 45%, rgba(255,31,44,.6) 0%, #161616 58%);"></span>
+      </div>
+      <div class="home-spheres" aria-hidden="true">
+        <i style="left:5%;top:36%;width:17px;height:17px;background:radial-gradient(circle at 40% 35%, #2c2c2c, #0d0d0d 70%)"></i>
+        <i style="right:6%;top:22%;width:13px;height:13px;background:radial-gradient(circle at 30% 50%, rgba(255,31,44,.8), #141414 62%)"></i>
+        <i style="right:11%;top:64%;width:20px;height:20px;background:radial-gradient(circle at 40% 35%, #2c2c2c, #0d0d0d 70%)"></i>
+        <i style="left:9%;top:70%;width:11px;height:11px;background:radial-gradient(circle at 70% 50%, rgba(255,31,44,.8), #141414 62%)"></i>
+      </div>
+    </div>
+    <div class="giant-wrap" aria-hidden="true"><span class="giant-stack"><span class="giant-under"><span class="one">1</span><span class="nine">9</span></span><span class="giant"><span class="one">1</span><span class="nine">9</span></span></span></div>
+    <div class="cond-main" id="cond-main">Clear</div>
+    <div class="scene-fog" id="scene-fog" aria-hidden="true"></div>
+    </div>
+    <div class="main-spacer"></div>
+    <div class="week-strip" id="week-strip" aria-label="8-day forecast for Lisbon"></div>
+  </div>
+
+  <!-- ============ EXPLODED / DETAIL VIEW ============ -->
+  <div id="detail" role="dialog" aria-label="Detailed weather">
+    <div class="d-status" aria-hidden="true">
+      <span class="time mono" style="font-weight:700; font-size:15px; font-family:-apple-system,sans-serif;">9:41</span>
+      <span style="display:flex; gap:6px; align-items:center;">
+        <svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" fill="#000"/><rect x="4.5" y="5" width="3" height="6" fill="#000"/><rect x="9" y="2.5" width="3" height="8.5" fill="#000"/><rect x="13.5" y="0" width="3" height="11" fill="#000"/></svg>
+        <svg width="25" height="12" viewBox="0 0 25 12"><rect x="0.7" y="0.7" width="20" height="10.6" rx="3" fill="none" stroke="#000" opacity=".45"/><rect x="2.2" y="2.2" width="15" height="7.6" rx="1.6" fill="#000"/><path d="M22.6 4v4a2.2 2.2 0 0 0 0-4z" fill="#000" opacity=".45"/></svg>
+      </span>
+    </div>
+    <div class="d-top">
+      <button class="d-close" id="btn-close-detail" aria-label="Back to main screen">✕</button>
+      <button class="day-label" id="day-label" aria-label="Back to main screen">NOW</button>
+      <div class="metric-nav">
+        <button id="btn-prev-metric" aria-label="Previous metric">‹</button>
+        <button id="btn-next-metric" aria-label="Next metric">›</button>
+      </div>
+    </div>
+    <div class="flip-zone"><div class="flip-inner" id="flip-inner">
+      <h2 class="d-title" id="d-title">Temp</h2>
+      <div class="d-dots" id="d-dots" aria-hidden="true"></div>
+      <div class="model-wrap"><div class="model-zone" id="model-zone"></div>
+      <div id="callouts" aria-hidden="true">
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none"><line x1="15" y1="10" x2="33" y2="34" vector-effect="non-scaling-stroke"/><line x1="13" y1="33" x2="29" y2="45" vector-effect="non-scaling-stroke"/><line x1="85" y1="9" x2="67" y2="32" vector-effect="non-scaling-stroke"/><line x1="15" y1="86" x2="31" y2="63" vector-effect="non-scaling-stroke"/><line x1="85" y1="86" x2="69" y2="62" vector-effect="non-scaling-stroke"/></svg>
+        <span class="co-lab" style="left:1%; top:2%">CLOUDS: 100%</span>
+        <span class="co-lab" style="left:1%; top:26%">RAIN: 4.0 MM</span>
+        <span class="co-lab" style="right:1%; top:0; text-align:right">RISE: 7:00A<br>SET: 5:39P<br>MOON: NEW</span>
+        <span class="co-lab" style="left:1%; bottom:1%"><span id="co-temp">TEMP: 19°</span><br><span id="co-feels">FEELS: 21°</span><br><span id="co-hum">HUM: 96%</span><br><span id="co-dew">DEW: 15°</span></span>
+        <span class="co-lab" style="right:1%; bottom:1%; text-align:right">PRESSURE: 1019<br>VIS: --</span>
+      </div></div>
+    </div></div>
+    <div class="d-table" id="d-table"></div>
+    <div class="graph-zone"><div class="graph-box" id="graph-box"></div></div>
+    <div class="slider-zone">
+      <div class="tl-circle" id="tl-circle" aria-hidden="true">NOW</div>
+      <div class="dslider" id="dslider" tabindex="0" role="slider" aria-label="Scrub through the 8 days" aria-valuemin="0" aria-valuemax="7" aria-valuenow="0" aria-valuetext="Now">
+        <div class="tl-track">
+          <div class="tl-clip"><span class="tl-blue"><span class="tl-n55">55</span></span><span class="tl-blue2"></span><span class="tl-n44">44</span></div>
+          <span class="tl-moon" id="ds-handle" style="left:0%"></span>
+        </div>
+        <div class="tl-hours" aria-hidden="true"><span>NOW</span><span>9</span><span>12P</span><span>3</span><span>6</span><span>9</span><span>12A</span><span>3</span></div>
+        <div class="fill" id="ds-fill" style="display:none"></div><div id="ds-dots" style="display:none"></div>
+      </div>
+    </div>
+    <div class="dw-zone">
+      <button class="dw-lab" id="dw-day">DAY</button>
+      <button class="dw-switch week" id="dw-switch" role="switch" aria-checked="true" aria-label="Day or week graph range"><i></i></button>
+      <button class="dw-lab on" id="dw-week">WEEK</button>
+    </div>
+  </div>
+
+  <!-- ============ MENU SHEET ============ -->
+  <div class="sheet" id="sheet-menu" role="dialog" aria-label="Menu">
+    <div class="sheet-hd"><button class="back-btn" data-close aria-label="Close">✕</button><h2>Menu</h2></div>
+    <div class="sheet-bd">
+      <button class="menu-item" data-open="sheet-themes">Themes <span class="val" id="menu-theme-val">Graphite · Common</span><span class="arr">›</span></button>
+      <button class="menu-item" data-open="sheet-source">Data Source <span class="val" id="menu-source-val">Apple Weather</span><span class="arr">›</span></button>
+      <button class="menu-item" data-open="sheet-locations">Locations <span class="val">Lisbon</span><span class="arr">›</span></button>
+      <button class="menu-item" data-open="sheet-units">Units <span class="val" id="menu-units-val">°C · m/s</span><span class="arr">›</span></button>
+      <div class="menu-item">Feels Like <button class="switch on" id="sw-feels" role="switch" aria-checked="true" aria-label="Feels Like"></button></div>
+      <div class="menu-item">Minimalist Mode <button class="switch" id="sw-minimal" role="switch" aria-checked="false" aria-label="Minimalist Mode"></button></div>
+      <div class="menu-item">Sound &amp; Music <button class="switch" id="sw-sound" role="switch" aria-checked="false" aria-label="Sound and Music"></button></div>
+      <div class="menu-item">Motion <button class="switch on" id="sw-motion" role="switch" aria-checked="true" aria-label="Motion — pause all animation"></button></div>
+      <button class="menu-item" data-open="sheet-wallpapers">Wallpapers <span class="val">Theme</span><span class="arr">›</span></button>
+      <button class="menu-item" data-open="sheet-widgets">Widgets <span class="arr">›</span></button>
+      <button class="menu-item" data-open="sheet-game">Cloudburst <span class="arr">›</span></button>
+      <div class="menu-item">Partly Cloudy — Mobbin home <button class="switch" id="sw-partly" role="switch" aria-checked="false" aria-label="Partly Cloudy Mobbin home variant"></button></div>
+      <button class="menu-item" id="menu-replay-ob">Replay intro <span class="arr">›</span></button>
+      <button class="menu-item" data-open="sheet-paywall">Membership <span class="val">Super</span><span class="arr">›</span></button>
+      <button class="menu-item" data-open="sheet-report">Daily Report <span class="arr">›</span></button>
+      <button class="menu-item" data-open="sheet-alerts">Alerts <span class="val">none in effect</span><span class="arr">›</span></button>
+      <button class="menu-item" data-open="sheet-share">Share Weather <span class="arr">›</span></button>
+      <button class="menu-item" data-open="sheet-events">Events <span class="arr">›</span></button>
+      <button class="menu-item" data-open="sheet-icons">App Icons <span class="arr">›</span></button>
+      <button class="menu-item" data-open="sheet-demod">DemoData — Seattle <span class="arr">›</span></button>
+      <button class="menu-item" data-open="sheet-support">Support <span class="arr">›</span></button>
+      <button class="menu-item" data-open="sheet-check">Source Check <span class="arr">›</span></button>
+    </div>
+  </div>
+
+  <!-- THEMES -->
+  <div class="sheet" id="sheet-themes" role="dialog" aria-label="Themes">
+    <div class="sheet-hd"><button class="back-btn" data-back="sheet-menu" aria-label="Back">‹</button><h2>Themes</h2></div>
+    <div class="sheet-bd">
+      <p class="note">All 15 themes from the source, with their exact palettes. The preview opens on Graphite — white field, red sun, black digits — exactly as in the video. Picking a theme reskins the whole app live: field, sun, digits, clouds and rain.</p>
+      <div class="theme-grid" id="theme-grid" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+  <!-- DATA SOURCE -->
+  <div class="sheet" id="sheet-source" role="dialog" aria-label="Data source">
+    <div class="sheet-hd"><button class="back-btn" data-back="sheet-menu" aria-label="Back">‹</button><h2>Data Source</h2></div>
+    <div class="sheet-bd">
+      <div id="source-list"></div>
+      <p class="note" id="source-req-note" style="margin-top:12px; font-weight:700"></p>
+      <p class="note" style="margin-top:12px">Forecast accuracy can vary by geographic region. Try different providers to find the one most accurate for your local region.</p>
+      <p class="note" style="margin-top:10px">Verbatim from the source strings: "DIFFERENT DATA SOURCES ARE MORE ACCURATE IN DIFFERENT REGIONS. TO IMPROVE FORECAST ACCURACY, TRY SELECTING A DIFFERENT DATA SOURCE." Pollen is AccuWeather-only: with any other source active the app states "ACCUWEATHER SOURCE REQUIRED", and the Air rows read "AQI UNAVAILABLE. CHOOSE A DIFFERENT SOURCE" / "POLLEN UNAVAILABLE. CHOOSE A DIFFERENT SOURCE".</p>
+      <p class="note" style="margin-top:10px">Some rows in the video read “--” (UV INDEX, VISIBILITY, AQI, POLLEN) with “/// NO DATA /// CHANGE SOURCE --&gt;” in the graph — that is the app telling you the active source has no value for that metric.</p>
+    </div>
+  </div>
+
+  <!-- LOCATIONS -->
+  <div class="sheet" id="sheet-locations" role="dialog" aria-label="Locations">
+    <div class="sheet-hd"><button class="back-btn" data-back="sheet-menu" aria-label="Back">‹</button><h2>Locations</h2></div>
+    <div class="sheet-bd">
+      <input class="loc-search" id="loc-search" type="search" placeholder="SEARCH LOCATIONS" aria-label="Search locations">
+      <div id="loc-results"></div>
+      <div class="sec-label">SAVED — REORDER / DELETE</div>
+      <div id="loc-list"></div>
+      <p class="note" style="margin-top:12px">Search adds a place to the saved list; ↑ ↓ reorder it, ✕ deletes it (the Mobbin “Changing location — Reordering / Deleting” flow). Lisbon stays the preview's primary location and data set — added places are list entries only and do not change the forecast shown.</p>
+    </div>
+  </div>
+
+  <!-- UNITS -->
+  <div class="sheet" id="sheet-units" role="dialog" aria-label="Units">
+    <div class="sheet-hd"><button class="back-btn" data-back="sheet-menu" aria-label="Back">‹</button><h2>Units</h2></div>
+    <div class="sheet-bd">
+      <div class="sec-label" style="padding:14px 0 8px">TEMPERATURE</div>
+      <div class="seg" id="seg-temp">
+        <button data-unit="C" class="sel">°C Celsius</button>
+        <button data-unit="F">°F Fahrenheit</button>
+      </div>
+      <div class="sec-label">WIND</div>
+      <div class="seg" id="seg-wind">
+        <button data-val="ms" class="sel">m/s</button>
+        <button data-val="kmh">km/h</button>
+        <button data-val="mph">mph</button>
+        <button data-val="kn">kn</button>
+        <button data-val="bft">Bft</button>
+      </div>
+      <div class="sec-label">PRESSURE</div>
+      <div class="seg" id="seg-pressure">
+        <button data-val="hpa" class="sel">hPa</button>
+        <button data-val="inhg">inHg</button>
+        <button data-val="mb">mb</button>
+      </div>
+      <div class="sec-label">DISTANCE</div>
+      <div class="seg" id="seg-dist">
+        <button data-val="km" class="sel">km</button>
+        <button data-val="mi">mi</button>
+      </div>
+      <div class="sec-label">PRECIPITATION</div>
+      <div class="seg" id="seg-precip">
+        <button data-val="mm" class="sel">millimeters</button>
+        <button data-val="in">inches</button>
+      </div>
+      <p class="note" style="margin-top:14px">The full unit set from the source strings: wind "%@ mph / km/h / m/s / kn / Bft", pressure "%@ hPa / inHg / mb", distance "%@ km / mi", precipitation in millimeters. Wind, pressure and precip choices convert the Air and Precip rows in the exploded view live. The video itself is °C · m/s · hPa · mm.</p>
+    </div>
+  </div>
+
+  <!-- WALLPAPERS -->
+  <div class="sheet" id="sheet-wallpapers" role="dialog" aria-label="Wallpapers">
+    <div class="sheet-hd"><button class="back-btn" data-back="sheet-menu" aria-label="Back">‹</button><h2>Wallpapers</h2></div>
+    <div class="sheet-bd">
+      <button class="src-item sel"><span>Theme</span><span class="def">FLAT THEME COLOUR</span></button>
+      <button class="src-item"><span>Gradient</span><span class="def">THEME → SUN</span></button>
+      <button class="src-item"><span>Plain</span><span class="def">SOLID, NO EXTRAS</span></button>
+      <p class="note" style="margin-top:12px">Graphite's wallpaper is the plain white field you see on the main screen — no photo, no gradient.</p>
+    </div>
+  </div>
+
+  <!-- WIDGETS -->
+  <div class="sheet" id="sheet-widgets" role="dialog" aria-label="Widgets">
+    <div class="sheet-hd"><button class="back-btn" data-close aria-label="Close">✕</button><h2>Widgets</h2></div>
+    <div class="sheet-bd">
+      <p class="note">Widget designs from the trailer's home-screen frames — dark grey cards with the timeline-bar widget — above the 8 widget types from the source, previewed with the video's Lisbon data.</p>
+      <div class="wx-card">
+        <div class="wx-top">
+          <div class="wx-big">55</div>
+          <div class="wx-place"><span class="wp1">ROME</span><span class="wp2">RAIN</span></div>
+          <svg class="wx-icon" width="86" height="64" viewBox="0 0 86 64" aria-hidden="true"><g fill="#fff"><circle cx="28" cy="38" r="15"/><circle cx="46" cy="28" r="19"/><circle cx="63" cy="39" r="13"/></g><g fill="#2FA8E0"><path d="M28 52 c2.6 3.8 2.6 6.4 0 8.4 c-2.6 -2 -2.6 -4.6 0 -8.4z"/><path d="M46 54 c2.6 3.8 2.6 6.4 0 8.4 c-2.6 -2 -2.6 -4.6 0 -8.4z"/><path d="M64 52 c2.6 3.8 2.6 6.4 0 8.4 c-2.6 -2 -2.6 -4.6 0 -8.4z"/></g></svg>
+        </div>
+        <div class="wx-bar"><span class="wx-blue"><b>56</b></span><span class="wx-moon" style="left:26%"></span><span class="wx-moon" style="left:66%"></span><span class="wx-n49">49</span></div>
+        <div class="wx-hours"><span>NOW</span><span>6</span><span>9</span><span>12P</span><span>3</span><span>6</span><span>9</span><span>12A</span></div>
+      </div>
+      <div class="wx-row">
+        <div class="wx-sq">
+          <svg width="74" height="56" viewBox="0 0 86 64" aria-hidden="true"><g fill="#fff"><circle cx="28" cy="34" r="14"/><circle cx="45" cy="25" r="17"/><circle cx="61" cy="35" r="12"/></g><g fill="#2FA8E0"><path d="M30 46 c2.6 3.8 2.6 6.4 0 8.4 c-2.6 -2 -2.6 -4.6 0 -8.4z"/><path d="M50 48 c2.6 3.8 2.6 6.4 0 8.4 c-2.6 -2 -2.6 -4.6 0 -8.4z"/></g></svg>
+          <div class="wx-sq-num">15</div>
+          <div class="wx-sq-lab">ROME · RAIN</div>
+        </div>
+        <div class="wx-sq">
+          <div class="wx-sq-lab">ROME</div>
+          <div class="wx-sq-num">55</div>
+          <svg width="74" height="56" viewBox="0 0 86 64" aria-hidden="true"><g fill="#fff"><circle cx="28" cy="34" r="14"/><circle cx="45" cy="25" r="17"/><circle cx="61" cy="35" r="12"/></g><g fill="#2FA8E0"><path d="M30 46 c2.6 3.8 2.6 6.4 0 8.4 c-2.6 -2 -2.6 -4.6 0 -8.4z"/><path d="M50 48 c2.6 3.8 2.6 6.4 0 8.4 c-2.6 -2 -2.6 -4.6 0 -8.4z"/></g></svg>
+          <div class="wx-sq-lab">RAIN</div>
+        </div>
+      </div>
+      <div id="widget-grid" style="margin-top:6px"></div>
+    </div>
+  </div>
+
+  <!-- MEMBERSHIP -->
+  <div class="sheet" id="sheet-membership" role="dialog" aria-label="Membership">
+    <div class="sheet-hd"><button class="back-btn" data-back="sheet-menu" aria-label="Back">‹</button><h2>Membership</h2></div>
+    <div class="sheet-bd">
+      <div class="tier"><h3>Free</h3><p>Current weather, hourly and daily forecast, a starter set of themes. This preview runs entirely on the Free tier.</p></div>
+      <div class="tier hot"><h3>Plus — single app</h3><p>Everything in Not Boring Weather: all 15 themes, every data source, widgets, wallpapers and Cloudburst extras. Monthly, yearly or lifetime, with a free trial first.</p></div>
+      <div class="tier"><h3>Super — all Andy apps</h3><p>Plus for every Andy Works app (Weather, Calculator and the rest of the Not Boring family) under one subscription. Monthly, yearly or lifetime, with a free trial first.</p></div>
+      <div class="seg" id="seg-billing">
+        <button data-bill="Monthly">Monthly</button>
+        <button data-bill="Yearly" class="sel">Yearly</button>
+        <button data-bill="Lifetime">Lifetime</button>
+      </div>
+      <p class="note" id="billing-note" style="margin-top:12px">Yearly billing selected. Descriptive only — the real app sells through RevenueCat / StoreKit and product prices live server-side, so there is no checkout in this preview.</p>
+    </div>
+  </div>
+
+  <!-- SUPPORT -->
+  <div class="sheet" id="sheet-support" role="dialog" aria-label="Support">
+    <div class="sheet-hd"><button class="back-btn" data-back="sheet-menu" aria-label="Back">‹</button><h2>Support</h2></div>
+    <div class="sheet-bd">
+      <p class="note">Not Boring Weather v3.54 · bundle <span class="mono">com.andyworks.weather</span> · by Andy Works. This web preview is cloned frame by frame from a screen recording of the real app in Lisbon (Graphite theme).</p>
+      <button class="btn btn-dark" data-open="sheet-check" style="margin-top:16px; width:100%">Open Source Check</button>
+    </div>
+  </div>
+
+  <!-- CLOUDBURST -->
+  <div class="sheet" id="sheet-game" role="dialog" aria-label="Cloudburst game">
+    <div class="sheet-hd"><button class="back-btn" data-close aria-label="Close">✕</button><h2>Cloudburst</h2></div>
+    <div class="sheet-bd">
+      <p class="note" style="font-weight:700">BURST AS MANY CLOUDS AS YOU CAN, BUT WATCH OUT FOR THE BLACK THUNDERCLOUDS</p>
+      <div class="g-score"><span>SCORE <b id="g-score">0</b></span><span>TIME <b id="g-time">30</b>s</span><span>BEST <b id="g-best">0</b></span></div>
+      <div id="game-area"></div>
+      <button class="btn btn-dark" id="g-start" style="width:100%; margin-top:14px">Start game</button>
+      <p class="note" style="margin-top:10px">White cloud +10 · Black thundercloud −15. Clouds drift faster as the clock runs down.</p>
+    </div>
+  </div>
+
+  <!-- SOURCE CHECK -->
+  <div class="sheet" id="sheet-check" role="dialog" aria-label="Source check">
+    <div class="sheet-hd"><button class="back-btn" data-close aria-label="Close">✕</button><h2>Source check</h2></div>
+    <div class="sheet-bd">
+      <p class="note">Preview vs. the 55-second screen recording, frame by frame. Primary data is the video's Lisbon set; the Seattle DemoData from the extracted source build (53°F, partly cloudy, AQI 300, Sep 12 2020) is kept here for reference only and is no longer the default screen.</p>
+      <p class="note" style="margin-top:10px; font-weight:700; font-size:14.5px; opacity:1">Sample data from the user's video, Nov 2024 — not live.</p>
+      <div id="check-list" style="margin-top:8px"></div>
+      <div class="sec-label">SEATTLE DEMODATA (SOURCE BUILD, REFERENCE ONLY)</div>
+      <p class="note">Current 53°F · feels 53° · humidity 90% · wind 15 mph / gust 20 · AQI 300 · moon Third Quarter 85% · minutely rain rising to 0.30 in/hr · 8 days from 40°/50° cloudy to 70°/85° partly cloudy.</p>
+    </div>
+  </div>
+
+  <!-- DAILY REPORT -->
+  <div class="sheet" id="sheet-report" role="dialog" aria-label="Daily Report">
+    <div class="sheet-hd"><button class="back-btn" data-back="sheet-menu" aria-label="Back">‹</button><h2>Daily Report</h2></div>
+    <div class="sheet-bd">
+      <p class="note">LISBON — TODAY</p>
+      <div class="tier hot"><h3>19° · Clear</h3><p>High 21° / Low 15° · Feels like 21°<br>Humidity 96% · Dew point 15°<br>Wind 6 m/s E · Gust 10 m/s · Pressure 1019 hPa<br>Sunrise 7:00A · Sunset 5:39P<br>Precipitation 4.0 mm · Chance 55% · Type rain<br>Moon: New · 0% illuminated</p></div>
+      <p class="note">FETCHING NEXT HOUR…</p>
+      <p class="note" style="margin-top:10px">A DailyReport symbol exists in the binary but Localizable.strings carries no UI copy for it (likely a notification / share payload), so this report is composed from the video's Lisbon values only — nothing invented.</p>
+    </div>
+  </div>
+
+  <!-- ALERTS -->
+  <div class="sheet" id="sheet-alerts" role="dialog" aria-label="Weather alerts">
+    <div class="sheet-hd"><button class="back-btn" data-back="sheet-menu" aria-label="Back">‹</button><h2>Alerts</h2></div>
+    <div class="sheet-bd">
+      <p class="note">WEATHER ALERTS — LISBON</p>
+      <div class="alert-card"><div class="st" style="color:#111">Alerts — none in effect</div>
+        <p class="note" style="margin-top:8px">No alert is in effect in any source capture. The video, DemoData and the readable Mobbin screens contain no alert payload for Lisbon or Seattle, so there is no alert text to show here — the screen is built so the Mobbin "View alerts" flow is reachable.</p></div>
+    </div>
+  </div>
+
+  <!-- SHARE WEATHER -->
+  <div class="sheet" id="sheet-share" role="dialog" aria-label="Share weather">
+    <div class="sheet-hd"><button class="back-btn" data-back="sheet-menu" aria-label="Back">‹</button><h2>Share Weather</h2></div>
+    <div class="sheet-bd">
+      <p class="note">SHARE WEATHER — the summary the app would hand to the share sheet:</p>
+      <textarea class="share-box" id="share-text" readonly style="margin-top:12px">Lisbon — 19°, Clear
+Today 15° / 21° · Feels like 21°
+Wind 6 m/s E, gust 10 m/s · Humidity 96%
+Sunrise 7:00A · Sunset 5:39P
+— Not Boring Weather</textarea>
+      <button class="btn btn-dark" id="share-copy" style="width:100%; margin-top:14px">Copy summary</button>
+      <p class="note" id="share-status" style="margin-top:10px">A web preview has no OS share sheet, so sharing is copy-to-clipboard.</p>
+    </div>
+  </div>
+
+  <!-- EVENTS -->
+  <div class="sheet" id="sheet-events" role="dialog" aria-label="Holiday events">
+    <div class="sheet-hd"><button class="back-btn" data-back="sheet-menu" aria-label="Back">‹</button><h2>Events</h2></div>
+    <div class="sheet-bd">
+      <p class="note">Holiday events from shared.scnassets/Events.scn + Localizable.strings. Tap one to play its greeting over the main scene.</p>
+      <div id="event-list"></div>
+    </div>
+  </div>
+
+  <!-- APP ICONS -->
+  <div class="sheet" id="sheet-icons" role="dialog" aria-label="App icons">
+    <div class="sheet-hd"><button class="back-btn" data-back="sheet-menu" aria-label="Back">‹</button><h2>App Icons</h2></div>
+    <div class="sheet-bd">
+      <p class="note">The 14 alternate app icons from Info.plist (SettingsAppIconsView). There is NO graphite icon — Graphite is the default icon. The tiles below are drawn from each theme's palette; the real icons live in Assets.car and cannot be extracted on this machine.</p>
+      <div class="icon-grid" id="icon-grid"></div>
+      <p class="note" id="icon-note" style="margin-top:12px">Default icon: Graphite.</p>
+    </div>
+  </div>
+
+  <!-- DEMODATA — SEATTLE (source fixture, full fields) -->
+  <div class="sheet" id="sheet-demod" role="dialog" aria-label="DemoData Seattle full fields">
+    <div class="sheet-hd"><button class="back-btn" data-close aria-label="Close">✕</button><h2>DemoData</h2></div>
+    <div class="sheet-bd">
+      <p class="note">SEATTLE · SAT SEP 12 2020 · DemoData.json from the source build — the app's own hand-written fixture, shown here with EVERY field (the Lisbon video stays the default screen).</p>
+      <div class="sec-label">CURRENT</div>
+      <div>
+        <div class="trow"><span>TEMPERATURE</span><span class="leader"></span><span class="val">53°F</span></div>
+        <div class="trow"><span>FEELS LIKE</span><span class="leader"></span><span class="val">53°F</span></div>
+        <div class="trow"><span>DEW POINT</span><span class="leader"></span><span class="val">63.8°F</span></div>
+        <div class="trow"><span>CONDITION</span><span class="leader"></span><span class="val">PARTLY CLOUDY</span></div>
+        <div class="trow"><span>CLOUD COVER</span><span class="leader"></span><span class="val">50%</span></div>
+        <div class="trow"><span>HUMIDITY</span><span class="leader"></span><span class="val">90%</span></div>
+        <div class="trow"><span>PRESSURE</span><span class="leader"></span><span class="val">25.0</span></div>
+        <div class="trow"><span>UV INDEX</span><span class="leader"></span><span class="val">5</span></div>
+        <div class="trow"><span>VISIBILITY</span><span class="leader"></span><span class="val">10000 (10 KM / 6.2 MI)</span></div>
+        <div class="trow"><span>WIND</span><span class="leader"></span><span class="val">15 MPH · GUST 20 · DIR 0°</span></div>
+        <div class="trow"><span>RAIN</span><span class="leader"></span><span class="val">0.2 · SNOW 0 · TYPE RAIN</span></div>
+        <div class="trow"><span>AQI (EPA)</span><span class="leader"></span><span class="val">300</span></div>
+        <div class="trow"><span>POLLEN G/R/T/M</span><span class="leader"></span><span class="val">100 / 100 / 100 / 100</span></div>
+      </div>
+      <div class="sec-label">MINUTELY — NEXT 60 MIN (FULL CURVE)</div>
+      <div id="minutely-graph"></div>
+      <p class="note">Precipitation peaks at 0.34 in/hr at minutes 15–17, falls to 0 by minute 39 and stays 0 to minute 60. Temperature (dashed) falls steadily 57.49°F → 51.79°F across minutes 3–60.</p>
+      <div class="sec-label">DAILY — ALL FIELDS (EVERY DAY: PRECIP PROB 50 · DEW 45°F · HUM 80% · PRESSURE 20 · UV 10 · MOON FRACTION 0.85)</div>
+      <div id="demod-daily"></div>
+      <div class="sec-label">HOURLY — 26 ENTRIES (EVERY HOUR: FEELS 57.73°F · DEW 55°F · HUM 80% · PRESSURE 20 · VIS 10000 · PROB 50 · TYPE NONE)</div>
+      <div id="demod-hourly"></div>
+    </div>
+  </div>
+
+  <!-- EVENT OVERLAY -->
+  <div id="event-overlay" role="dialog" aria-label="Holiday event">
+    <div><div class="ev-big" id="ev-big">Boo!</div><div class="ev-sub" id="ev-sub">HALLOWEEN · EVENTS.SCN</div>
+    <div class="ev-sub" style="margin-top:26px; color:#777">TAP TO CLOSE</div></div>
+  </div>
+
+  <!-- ============ FIRST-LAUNCH INTRO — one auto-playing ~8s sequence, no tap-through, no captions ============ -->
+  <div id="onboarding" class="open" role="dialog" aria-label="Intro">
+    <div class="intro-stage" id="intro-stage">
+      <div class="intro-status" id="intro-status" aria-hidden="true">
+        <span class="time">9:41</span>
+        <span class="sicons">
+          <svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" fill="#fff"/><rect x="4.5" y="5" width="3" height="6" fill="#fff"/><rect x="9" y="2.5" width="3" height="8.5" fill="#fff"/><rect x="13.5" y="0" width="3" height="11" fill="#fff"/></svg>
+          <svg width="16" height="11" viewBox="0 0 16 12" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><path d="M1.5 4.2a10 10 0 0 1 13 0"/><path d="M4 7a6.4 6.4 0 0 1 8 0"/><circle cx="8" cy="10" r="1.3" fill="#fff" stroke="none"/></svg>
+          <svg width="25" height="12" viewBox="0 0 25 12"><rect x="0.7" y="0.7" width="20" height="10.6" rx="3" fill="none" stroke="#fff" opacity=".45"/><rect x="2.2" y="2.2" width="15" height="7.6" rx="1.6" fill="#fff"/><path d="M22.6 4v4a2.2 2.2 0 0 0 0-4z" fill="#fff" opacity=".45"/></svg>
+        </span>
+      </div>
+
+      <!-- beat 1 (0–1s): dim grey logo, then the yellow fire-watch tower in the rain -->
+      <div class="iscene" data-scene="0">
+        <div class="ob-frame intro-tower-frame" aria-hidden="true"><svg viewBox="0 0 393 852" preserveAspectRatio="xMidYMid slice"><rect width="393" height="852" fill="#241E26"/><g stroke="#B9D8E8" stroke-width="2" opacity=".55"><line x1="40" y1="60" x2="22" y2="150"/><line x1="120" y1="30" x2="102" y2="120"/><line x1="290" y1="50" x2="272" y2="140"/><line x1="350" y1="110" x2="332" y2="200"/><line x1="70" y1="300" x2="52" y2="390"/><line x1="330" y1="330" x2="312" y2="420"/></g><g stroke="#FFC400" stroke-width="7" fill="none"><line x1="150" y1="330" x2="132" y2="640"/><line x1="243" y1="330" x2="261" y2="640"/><line x1="150" y1="330" x2="243" y2="330"/><line x1="143" y1="430" x2="250" y2="430"/><line x1="136" y1="540" x2="256" y2="540"/><line x1="150" y1="330" x2="256" y2="540"/><line x1="243" y1="330" x2="136" y2="540"/><line x1="143" y1="430" x2="261" y2="640"/><line x1="250" y1="430" x2="132" y2="640"/></g><rect x="138" y="252" width="117" height="78" fill="#FFC400"/><rect x="150" y="266" width="40" height="34" fill="#2E2A33"/><rect x="200" y="266" width="40" height="34" fill="#2E2A33"/><polygon points="120,254 273,254 196,182" fill="#2E2A33"/><line x1="196" y1="182" x2="196" y2="140" stroke="#111" stroke-width="4"/><polygon points="196,140 226,148 196,158" fill="#FF1F2C"/><polygon points="0,852 30,690 52,790 78,660 104,800 130,700 160,820 196,690 226,810 258,680 288,800 316,700 346,820 372,710 393,790 393,852" fill="#0d0d0d"/></svg></div>
+        <div class="intro-logo-open" aria-hidden="true"><svg width="270" height="92" viewBox="0 0 270 92"><g fill="none" stroke="#8a8a8a" stroke-linecap="round"><path d="M8 46 q14 -4 30 -1" stroke-width="11"/><path d="M62 18 C 84 8, 104 22, 102 46 C 100 72, 76 82, 60 68 C 46 56, 48 28, 62 18 Z" stroke-width="12"/><path d="M126 20 q7 9 3 19" stroke-width="9"/><path d="M142 22 q6 8 2 16" stroke-width="9"/><path d="M172 16 C 196 6, 218 22, 215 47 C 212 73, 187 82, 171 67 C 157 54, 159 26, 172 16 Z" stroke-width="12"/><circle cx="248" cy="66" r="6.5" fill="#8a8a8a" stroke="none"/></g></svg></div>
+      </div>
+
+      <!-- beat 2 (~1–2s): camera flies forward into the desert -->
+      <div class="iscene" data-scene="1">
+        <div class="idesert" aria-hidden="true"><svg viewBox="0 0 393 852" preserveAspectRatio="xMidYMid slice"><rect width="393" height="852" fill="#C3CDD4"/><circle cx="308" cy="150" r="46" fill="#fff"/><g fill="#fff"><ellipse cx="86" cy="170" rx="52" ry="20"/><ellipse cx="120" cy="156" rx="36" ry="17"/></g><g fill="#FFD9DE"><ellipse cx="238" cy="238" rx="58" ry="19"/><ellipse cx="272" cy="224" rx="34" ry="15"/></g><polygon points="0,470 110,392 226,452 330,404 393,442 393,560 0,560" fill="#F49C7E"/><polygon points="0,520 140,462 280,512 393,478 393,600 0,600" fill="#FF7E5F"/><rect y="560" width="393" height="292" fill="#FFB800"/><polygon points="40,700 96,668 128,712 84,738" fill="#4A3B30"/><polygon points="84,738 128,712 150,744 104,762" fill="#33281F"/><polygon points="262,742 322,706 356,752 306,780" fill="#4A3B30"/><polygon points="306,780 356,752 372,782 330,796" fill="#33281F"/></svg></div>
+      </div>
+
+      <!-- beat 3 (~2–3s): giant faceted pencil on a cream card, slowly turning, shards flying off -->
+      <div class="iscene" data-scene="2">
+        <div class="icard" aria-hidden="true" style="background:#FBF3D9"><svg viewBox="0 0 393 852" preserveAspectRatio="xMidYMid slice" style="width:100%;height:100%;display:block"><rect width="393" height="852" fill="#FBF3D9"/><g transform="rotate(38 196 426)"><g class="pencil-rot"><polygon points="150,120 196,60 242,120" fill="#F5D98B"/><polygon points="178,86 196,60 214,86 206,120 186,120" fill="#3A3A3A"/><polygon points="150,120 242,120 242,640 150,640" fill="#FFC400"/><polygon points="150,120 178,120 178,640 150,640" fill="#FFD94D"/><polygon points="214,120 242,120 242,640 214,640" fill="#F0A500"/><polygon points="150,640 242,640 242,690 150,690" fill="#FF8FA3"/><polygon points="150,690 242,690 242,716 150,716" fill="#B9B9B9"/></g></g><polygon class="shard" style="--sx:-52px;--sy:-30px" points="118,300 133,319 110,323" fill="#E8A90C"/><polygon class="shard" style="--sx:58px;--sy:-14px" points="272,392 289,405 268,411" fill="#F5C542"/><polygon class="shard" style="--sx:-44px;--sy:36px" points="128,540 141,555 120,557" fill="#D98E00"/></svg></div>
+      </div>
+
+      <!-- beat 4 (~3–4s): MOSTLY CLOUDY card -->
+      <div class="iscene" data-scene="3">
+        <div class="icard mc-card" aria-hidden="true">
+          <div class="mc-digits">19</div>
+          <div class="mc-title">MOSTLY CLOUDY</div>
+          <div class="mc-circle"><span>6PM</span></div>
+          <div class="mc-tl">
+            <span class="mc-n44">44</span>
+            <div class="mc-track"><i class="mc-seg" style="left:0;width:35%"></i><i class="mc-seg" style="right:0;width:12%"></i><span class="mc-n55">55</span><span class="mc-moon"></span></div>
+          </div>
+          <div class="mc-hours"><span>9</span><span>12P</span><span>3</span><span>6</span><span>9</span><span>12A</span><span>3</span></div>
+          <div class="mc-foot"></div>
+        </div>
+      </div>
+
+      <!-- beat 5 (~4–5s): sun egg rising on the cream card -->
+      <div class="iscene" data-scene="4">
+        <div class="icard" aria-hidden="true" style="background:#F6F0E2"><svg viewBox="0 0 393 720" preserveAspectRatio="xMidYMid slice" style="width:100%;height:100%;display:block"><rect width="393" height="720" fill="#F6F0E2"/><circle cx="196" cy="322" r="126" fill="#F6A609"/><path d="M70 322 A126 126 0 0 1 322 322 Z" fill="#FFFFFF"/><g stroke="#141414" stroke-width="9" stroke-linecap="round"><line x1="138" y1="330" x2="158" y2="350"/><line x1="158" y1="330" x2="138" y2="350"/><line x1="234" y1="330" x2="254" y2="350"/><line x1="254" y1="330" x2="234" y2="350"/></g><path d="M178 348 q18 15 36 0" fill="none" stroke="#F26076" stroke-width="8" stroke-linecap="round"/><g fill="none" stroke="#333" stroke-width="3.4" stroke-linecap="round"><path d="M282 262 q6 -7 12 0 q6 -7 12 0"/><path d="M310 288 q5 -6 10 0 q5 -6 10 0"/></g><path d="M120 654 A58 58 0 0 0 120 770 Z" fill="#2FD4D8"/><path d="M120 654 A58 58 0 0 1 120 770 Z" fill="#FF9E1B"/><path d="M273 654 A58 58 0 0 0 273 770 Z" fill="#B18CFF"/><path d="M273 654 A58 58 0 0 1 273 770 Z" fill="#FF8FAB"/></svg></div>
+      </div>
+
+      <!-- beat 6 (~5s): low-poly deer in profile on black, white specks falling -->
+      <div class="iscene" data-scene="5">
+        <div class="ob-frame" aria-hidden="true"><svg viewBox="0 0 393 852" preserveAspectRatio="xMidYMid slice"><rect width="393" height="852" fill="#000"/><rect x="52" y="200" width="46" height="452" fill="#3C3C3C"/><text x="75" y="452" text-anchor="middle" font-family="Anton, sans-serif" font-size="52" fill="#8a8a8a">1</text><g><polygon points="150,420 236,398 268,428 240,470 160,478" fill="#8A5A33"/><polygon points="236,398 292,352 306,366 268,428" fill="#A06A3B"/><polygon points="292,352 300,318 312,350 330,326 326,362 306,366" fill="#6E4525"/><circle cx="294" cy="362" r="4" fill="#000"/><polygon points="168,478 158,600 172,600 186,486" fill="#7A4E2B"/><polygon points="222,472 236,596 250,596 244,466" fill="#7A4E2B"/><polygon points="150,420 118,442 146,452" fill="#6E4525"/><polygon points="196,404 214,382 222,408" fill="#A06A3B"/></g><g fill="#fff"><rect class="spk spk1" x="252" y="210" width="7" height="16"/><rect class="spk spk2" x="306" y="160" width="6" height="13"/><rect class="spk spk3" x="212" y="140" width="5" height="11"/><rect class="spk spk4" x="338" y="250" width="6" height="14"/></g></svg></div>
+      </div>
+
+      <!-- beat 7 (~5.5–7s): app icon morphing on a cream rounded square, sparkles radiating -->
+      <div class="iscene" data-scene="6">
+        <div class="imorph" aria-hidden="true">
+          <span class="tick" style="left:78px;top:-8px;width:4px;height:16px"></span><span class="tick" style="right:20px;top:6px;width:4px;height:14px;transform:rotate(45deg)"></span><span class="tick" style="right:-8px;top:74px;width:16px;height:4px"></span><span class="tick" style="right:18px;bottom:4px;width:4px;height:14px;transform:rotate(-45deg)"></span><span class="tick" style="left:78px;bottom:-8px;width:4px;height:16px"></span><span class="tick" style="left:16px;bottom:6px;width:4px;height:14px;transform:rotate(45deg)"></span><span class="tick" style="left:-8px;top:74px;width:16px;height:4px"></span><span class="tick" style="left:18px;top:6px;width:4px;height:14px;transform:rotate(-45deg)"></span>
+          <div class="box">
+            <span class="mglyph d1"><svg width="118" height="104" viewBox="0 0 118 104"><circle cx="86" cy="26" r="17" fill="#FFC400"/><g fill="#2E7CD6"><circle cx="38" cy="58" r="24"/><circle cx="62" cy="44" r="28"/><circle cx="84" cy="60" r="21"/></g><circle cx="24" cy="88" r="10" fill="#2E7CD6"/></svg></span>
+            <span class="mglyph d2"><svg width="122" height="92" viewBox="0 0 122 92"><path d="M10 58 C 32 22, 54 22, 70 46 C 84 67, 102 63, 112 40" fill="none" stroke="#3ED6DA" stroke-width="17" stroke-linecap="round"/><circle cx="103" cy="42" r="5.5" fill="#fff"/></svg></span>
+            <span class="mglyph d3"><svg width="112" height="102" viewBox="0 0 112 102"><polygon points="6,52 106,8 68,94 53,61" fill="#FF8FAB"/><polygon points="6,52 106,8 53,61" fill="#FFB3C6"/><polygon points="53,61 68,94 45,68" fill="#F2728C"/></svg></span>
+            <span class="mglyph d4"><svg width="102" height="102" viewBox="0 0 102 102"><path d="M39 12 h24 v27 h27 v24 h-27 v27 h-24 v-27 h-27 v-24 h27 Z" fill="#A78BFA"/><path d="M51 12 v78 M12 51 h78" stroke="#8F6FE8" stroke-width="2.4"/></svg></span>
+            <span class="mglyph d5"><svg width="112" height="112" viewBox="0 0 112 112"><circle cx="56" cy="56" r="43" fill="#FF9FB2"/><path d="M56 30 C 56 30, 41 53, 41 65 a15 15 0 0 0 30 0 C 71 53, 56 30, 56 30 Z" fill="#2E9BE6"/></svg></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- beat 8 (~7–8s): white brush logo on black -->
+      <div class="iscene" data-scene="7">
+        <div class="intro-logo-final" aria-hidden="true"><svg width="270" height="92" viewBox="0 0 270 92"><g fill="none" stroke="#fff" stroke-linecap="round"><path d="M8 46 q14 -4 30 -1" stroke-width="11"/><path d="M62 18 C 84 8, 104 22, 102 46 C 100 72, 76 82, 60 68 C 46 56, 48 28, 62 18 Z" stroke-width="12"/><path d="M126 20 q7 9 3 19" stroke-width="9"/><path d="M142 22 q6 8 2 16" stroke-width="9"/><path d="M172 16 C 196 6, 218 22, 215 47 C 212 73, 187 82, 171 67 C 157 54, 159 26, 172 16 Z" stroke-width="12"/><circle cx="248" cy="66" r="6.5" fill="#fff" stroke="none"/></g></svg></div>
+      </div>
+    </div>
+
+    <button class="intro-skip" id="intro-skip">SKIP</button>
+
+    <!-- WHERE ARE YOU? — after the intro (or SKIP) -->
+    <div class="intro-loc" id="intro-loc">
+      <div class="ob-pin">
+        <svg width="148" height="178" viewBox="0 0 148 178" aria-hidden="true"><defs><radialGradient id="ping" cx="38%" cy="30%" r="80%"><stop offset="0%" stop-color="#FF7A70"/><stop offset="45%" stop-color="#FF3B30"/><stop offset="100%" stop-color="#C40F1D"/></radialGradient></defs><path d="M74 4 C 36 4, 10 32, 10 66 C 10 112, 74 174, 74 174 C 74 174, 138 112, 138 66 C 138 32, 112 4, 74 4 Z" fill="url(#ping)"/><ellipse cx="52" cy="42" rx="20" ry="13" fill="#fff" opacity=".38" transform="rotate(-24 52 42)"/><circle cx="74" cy="66" r="25" fill="#fff"/></svg>
+        <h3>WHERE ARE YOU?</h3>
+        <p>WE USE YOUR LOCATION TO SHOW<br>HYPER-ACCURATE FORECASTS</p>
+        <button class="ob-findme" id="ob-findme">FIND ME</button>
+        <p class="ob-loc-note" id="ob-loc-note">Location isn't available in this web preview, so nothing was detected. The preview opens on Lisbon — the city from the video. Type a city below, or tap Skip to continue with Lisbon.</p>
+        <div>
+          <input class="ob-city" id="ob-city" type="text" placeholder="TYPE A CITY — E.G. LISBON" aria-label="Type a city to continue">
+          <br><button class="ob-city-go" id="ob-city-go">CONTINUE</button>
+        </div>
+        <button class="ob-loc-skip loc-skip">SKIP</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ PAYWALL (Mobbin Super) ============ -->
+  <div class="sheet" id="sheet-paywall" role="dialog" aria-label="Super paywall">
+    <div class="pw-top">
+      <button class="pw-restore" id="pw-restore">RESTORE</button>
+      <span class="mono" style="font-size:12px; font-weight:700;">9:41</span>
+      <button class="pw-close" data-close aria-label="Close paywall">×</button>
+    </div>
+    <div class="sheet-bd" style="padding:0 0 8px">
+      <div class="pw-hero">
+        <span class="pw-coin"><svg viewBox="0 0 160 160" aria-hidden="true"><circle cx="80" cy="80" r="62" fill="#FFC400"/><circle cx="80" cy="80" r="62" fill="none" stroke="#D99E00" stroke-width="3"/><circle cx="80" cy="80" r="47" fill="none" stroke="#FFF3C4" stroke-width="7"/><text x="80" y="97" text-anchor="middle" font-family="Archivo Black, sans-serif" font-size="44" fill="#B97F00">$</text><g fill="#111"><path d="M18 26 l3 8 8 3 -8 3 -3 8 -3 -8 -8 -3 8 -3z"/><path d="M138 108 l2.4 6.4 6.4 2.4 -6.4 2.4 -2.4 6.4 -2.4 -6.4 -6.4 -2.4 6.4 -2.4z"/></g></svg></span>
+        <h2 class="pw-head">More play.<br>Less routine.</h2>
+      </div>
+      <div class="pw-list">
+        <div class="pw-item"><span class="pi"><svg width="24" height="24" viewBox="0 0 24 24"><rect x="2" y="2" width="9" height="9" rx="2.5" fill="#111"/><rect x="13" y="2" width="9" height="9" rx="2.5" fill="#111" opacity=".45"/><rect x="2" y="13" width="9" height="9" rx="2.5" fill="#111" opacity=".45"/><rect x="13" y="13" width="9" height="9" rx="2.5" fill="#111"/></svg></span>Widgets</div>
+        <div class="pw-item"><span class="pi"><svg width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="#111" stroke-width="3"/><path d="M12 3 a9 9 0 0 1 0 18 z" fill="#111"/></svg></span>Skins</div>
+        <div class="pw-item"><span class="pi"><svg width="24" height="24" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="2" fill="none" stroke="#111" stroke-width="2.6"/><circle cx="9" cy="10" r="2" fill="#111"/><path d="M4 17 L10 12 L14 15 L17 12 L20 15" fill="none" stroke="#111" stroke-width="2.4"/></svg></span>Wallpapers</div>
+        <div class="pw-item"><span class="pi"><svg width="24" height="24" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3" fill="none" stroke="#111" stroke-width="2.6"/><line x1="5" y1="19" x2="19" y2="5" stroke="#FF1F2C" stroke-width="3"/></svg></span>No ads</div>
+        <div class="pw-item"><span class="pi"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M12 20 C 5 15, 3 11, 3 8 C 3 5, 5.5 3, 8.5 3 C 10.3 3, 11.5 3.9, 12 5 C 12.5 3.9, 13.7 3, 15.5 3 C 18.5 3, 21 5, 21 8 C 21 11, 19 15, 12 20 Z" fill="#111"/></svg></span>Support Indie</div>
+      </div>
+      <button class="pw-details" data-open="sheet-membership">SEE PLAN DETAILS ↗</button>
+      <div class="pw-seg" role="tablist" aria-label="Plan type">
+        <i class="pw-thumb" id="pw-thumb"></i>
+        <button id="pw-tab-app" role="tab" aria-selected="false">App</button>
+        <button id="pw-tab-super" class="sel-super" role="tab" aria-selected="true">Super</button>
+      </div>
+      <div class="pw-plans" id="pw-plans-super">
+        <button class="pw-plan sel" data-pw-plan><span class="pt"><span class="pw-check">✓</span>Super Monthly</span><span class="pp" style="display:block">5 apps for $6.98/mo</span></button>
+        <button class="pw-plan" data-pw-plan><span class="pw-badge">52% OFF</span><span class="pt"><span class="pw-check"></span>Super Yearly</span><span class="pp" style="display:block">5 apps for $39.98/year ($3.33/month)</span></button>
+      </div>
+      <div class="pw-plans" id="pw-plans-app" style="display:none">
+        <button class="pw-plan sel" data-pw-plan style="border-color:#FFC400"><span class="pw-apppill">App</span><span class="pp" style="display:block; margin-top:10px">Not Boring Weather only — S$ 19.98/yr ($1.67/mo)</span></button>
+      </div>
+      <p class="note" style="margin:4px 24px 14px">Descriptive only — no payment is taken in this preview.</p>
+    </div>
+    <button class="pw-continue" data-close>Continue</button>
+    <button class="pw-allplans" id="pw-allplans">All plans</button>
+  </div>
+
+</div>
+
+<script>
+(function(){
+"use strict";
+/* ============ LISBON DATA — from the video ============ */
+var DAYS = [
+  {short:'TODAY', full:'NOW',             icon:'cloud',     temp:19, hi:21, lo:15, feels:21, hum:96, dew:15},
+  {short:'WED',   full:'TOMORROW',        icon:'slashsun',  temp:17, hi:19, lo:13, feels:18, hum:88, dew:13},
+  {short:'THU',   full:'THURSDAY, OCT 31',icon:'cloud',     temp:16, hi:18, lo:13, feels:17, hum:90, dew:13},
+  {short:'FRI',   full:'FRIDAY, NOV 1',   icon:'cloudrain', temp:18, hi:18, lo:13, feels:18, hum:94, dew:15},
+  {short:'SAT',   full:'SATURDAY, NOV 2', icon:'sun',       temp:21, hi:23, lo:15, feels:22, hum:80, dew:14},
+  {short:'SUN',   full:'SUNDAY, NOV 3',   icon:'cloud',     temp:20, hi:22, lo:16, feels:21, hum:84, dew:15},
+  {short:'MON',   full:'MONDAY, NOV 4',   icon:'cloud',     temp:20, hi:22, lo:16, feels:21, hum:85, dew:15},
+  {short:'TUE',   full:'TUESDAY, NOV 5',  icon:'sun',       temp:21, hi:23, lo:16, feels:22, hum:78, dew:14}
+];
+var GRAPH_DAYS = ['TODAY','WED','THU','FRI','SAT','SUN','MON','TUE'];
+var S = { day:0, metric:0, row:0, range:'week', unit:'C' };
+function C(c){ return S.unit==='C' ? c : Math.round(c*9/5+32); }
+function deg(c){ return C(c)+'°'+S.unit; }
+
+/* day-strip icons: flat black bubble cloud, red sun disc, cloud + cyan rain */
+function stripIcon(kind){
+  var cloud = '<g fill="#111"><circle cx="11" cy="16" r="6"/><circle cx="18" cy="12" r="7.5"/><circle cx="25" cy="16" r="5.5"/></g>';
+  if (kind==='sun') return '<svg width="30" height="28" viewBox="0 0 36 32"><circle cx="18" cy="16" r="12.5" fill="#FF1F2C"/></svg>';
+  if (kind==='slashsun') return '<svg width="30" height="28" viewBox="0 0 36 32"><circle cx="18" cy="16" r="12" fill="#FF1F2C"/><rect x="3" y="13.6" width="25" height="5.2" rx="2.6" fill="#111" transform="rotate(-4 18 16)"/></svg>';
+  if (kind==='sunpeek') return '<svg width="30" height="28" viewBox="0 0 36 32"><circle cx="26.5" cy="9.5" r="6" fill="#FF1F2C"/><g fill="#111"><circle cx="10" cy="19" r="6"/><circle cx="17.5" cy="15" r="7.5"/><circle cx="25" cy="19" r="5.5"/></g></svg>';
+  if (kind==='bolt') return '<svg width="30" height="30" viewBox="0 0 36 32">'+cloud+'<polygon points="20,19 14.5,28.5 18.2,28.5 16.8,32 24.5,23 20.6,23" fill="#FFC400"/></svg>';
+  if (kind==='partly') return '<svg width="30" height="28" viewBox="0 0 36 32"><circle cx="17" cy="13" r="10.5" fill="#FF1F2C"/><g fill="#111"><circle cx="10" cy="20" r="5.5"/><circle cx="17" cy="16.5" r="7"/><circle cx="24" cy="20" r="5"/></g></svg>';
+  if (kind==='cloudrain') return '<svg width="30" height="30" viewBox="0 0 36 32">'+cloud+'<g fill="#26B7FF"><rect x="12" y="23" width="3.4" height="7" rx="1.7"/><rect x="21" y="23" width="3.4" height="7" rx="1.7"/></g></svg>';
+  return '<svg width="30" height="26" viewBox="0 0 36 30">'+cloud+'</svg>';
+}
+var strip = document.getElementById('week-strip');
+/* Mobbin home variant strip — a different day/state than the video */
+var MOBBIN_DAYS = [
+  {short:'TODAY', icon:'cloudrain', hi:23, lo:15},
+  {short:'WED',   icon:'cloudrain', hi:20, lo:13},
+  {short:'THU',   icon:'sunpeek',   hi:20, lo:12},
+  {short:'FRI',   icon:'cloudrain', hi:20, lo:13},
+  {short:'SAT',   icon:'slashsun',  hi:22, lo:13},
+  {short:'SUN',   icon:'cloud',     hi:21, lo:13},
+  {short:'MON',   icon:'bolt',      hi:21, lo:14},
+  {short:'TUE',   icon:'cloud',     hi:21, lo:14}
+];
+var stripData = DAYS;
+function renderStrip(){
+  strip.innerHTML='';
+  var sr = document.createElement('span'); sr.className='sr-only';
+  sr.textContent = '8-day forecast: ' + stripData.map(function(d){ return d.short+' high '+C(d.hi)+' low '+C(d.lo); }).join(', ') + '. Wednesday high 19, low 13.';
+  strip.appendChild(sr);
+  stripData.forEach(function(d){
+    var dl=document.createElement('div'); dl.className='dl'; dl.textContent=d.short;
+    var ic=document.createElement('div'); ic.className='ic'; ic.innerHTML=stripIcon(d.icon);
+    var hi=document.createElement('div'); hi.className='hi'; hi.textContent=C(d.hi);
+    var lo=document.createElement('div'); lo.className='lo'; lo.textContent=C(d.lo);
+    strip.appendChild(dl); strip.appendChild(ic); strip.appendChild(hi); strip.appendChild(lo);
+  });
+}
+renderStrip();
+/* ============ MODELS ============ */
+function modelTemp(){
+  return '<span class="model-giant" id="model-giant">'+C(DAYS[S.day].temp)+'</span>';
+}
+function modelPrecip(){
+  var drops='';
+  [12,26,40,54,68,82].forEach(function(x,i){
+    drops += '<span class="rain-drop" style="left:'+x+'%;top:0;height:'+(18+(i%3)*7)+'px;animation-duration:'+(0.8+(i%4)*0.16)+'s;animation-delay:'+(-(i%5)*0.24)+'s"></span>';
+  });
+  var bolts = '<svg class="bolt" style="left:15%;top:-8px;animation-delay:0s" width="26" height="46" viewBox="0 0 26 46" aria-hidden="true"><polygon points="15,0 3,26 11,26 7,46 23,18 14,18" fill="#FFC400" stroke="#111" stroke-width="1.6"/></svg>'+
+    '<svg class="bolt" style="left:46%;top:-2px;animation-delay:.55s" width="26" height="46" viewBox="0 0 26 46" aria-hidden="true"><polygon points="15,0 3,26 11,26 7,46 23,18 14,18" fill="#FFC400" stroke="#111" stroke-width="1.6"/></svg>'+
+    '<svg class="bolt" style="left:73%;top:-10px;animation-delay:1.1s" width="26" height="46" viewBox="0 0 26 46" aria-hidden="true"><polygon points="15,0 3,26 11,26 7,46 23,18 14,18" fill="#FFC400" stroke="#111" stroke-width="1.6"/></svg>';
+  return '<div class="rock-scene">'+drops+bolts+
+    '<svg style="position:absolute;left:0;right:0;bottom:0;width:100%;height:104px" viewBox="0 0 300 104" preserveAspectRatio="none" aria-hidden="true">'+
+    '<polygon fill="#26B7FF" opacity="0.5" points="18,34 62,22 108,30 152,18 198,28 244,20 282,32 282,44 18,44"/>'+
+    '<polygon fill="#101010" points="0,104 0,58 30,36 58,54 88,26 118,50 146,22 176,48 206,32 236,54 264,28 300,48 300,104"/>'+
+    '<polygon fill="#1d1d1d" points="88,26 118,50 146,22 128,60 100,58"/>'+
+    '<polygon fill="#262626" points="206,32 236,54 264,28 250,66 218,62"/>'+
+    '</svg></div>';
+}
+function modelSun(){ return '<div class="model-sun"></div>'; }
+function modelClouds(){
+  var specs=[[2,44,86],[52,10,104],[118,38,92],[34,66,64],[96,74,58],[160,60,66],[140,6,54]];
+  var b='';
+  specs.forEach(function(s, idx){ b+='<i style="left:'+s[0]+'px;top:'+s[1]+'px;width:'+s[2]+'px;height:'+s[2]+'px;animation-duration:'+(11+idx*2.7)+'s;animation-delay:'+(-idx*1.9)+'s"></i>'; });
+  return '<div class="cloud-cluster">'+b+
+    '<span class="cloud-orbit" style="left:-16px;top:6px;width:282px;height:138px;transform:rotate(-7deg)"></span>'+
+    '<span class="cloud-orbit" style="left:6px;top:-12px;width:238px;height:168px;transform:rotate(9deg)"></span></div>';
+}
+function modelAir(){
+  return '<svg class="vane-anim" width="250" height="180" viewBox="0 0 250 180" aria-hidden="true">'+
+    '<ellipse cx="125" cy="92" rx="112" ry="76" fill="none" stroke="#111" stroke-width="1.6"/>'+
+    '<line x1="125" y1="52" x2="125" y2="168" stroke="#111" stroke-width="6"/>'+
+    '<rect x="112" y="164" width="26" height="7" fill="#111"/>'+
+    '<g stroke="#111" stroke-width="4" fill="none"><line x1="125" y1="46" x2="88" y2="26"/><line x1="125" y1="46" x2="162" y2="26"/><line x1="125" y1="46" x2="125" y2="18"/></g>'+
+    '<g fill="#101010"><path d="M88 26 a13 13 0 1 1 10 -12 a16 16 0 1 0 10 12z"/><path d="M162 26 a13 13 0 1 0 -10 -12 a16 16 0 1 1 -10 12z"/><path d="M125 18 a13 13 0 1 1 12 8 a16 16 0 1 0 -12 -8z"/></g>'+
+    '<circle cx="125" cy="46" r="6" fill="#111"/>'+
+    '<path d="M125 62 L104 96 L118 96 L118 122 L132 122 L132 96 L146 96 Z" fill="#101010"/>'+
+    '<text x="125" y="86" text-anchor="middle" font-family="Archivo Black, sans-serif" font-size="17" fill="#fff">N</text>'+
+    '<polygon points="168,84 208,98 196,112 208,126 168,138 178,111" fill="#101010"/>'+
+    '<line x1="125" y1="80" x2="168" y2="108" stroke="#111" stroke-width="5"/></svg>';
+}
+function modelMoon(){ return '<div class="model-moon" id="model-moon"></div>'; }
+
+/* ============ METRICS: title, model, rows, graph ============ */
+function gLine(series, axis, fill){ return {kind:'line', series:series, axis:axis, fill:!!fill}; }
+var METRICS = [
+  { title:'Temp', model:modelTemp,
+    rows:[
+      {label:'TEMPERATURE', value:function(d){ return d===3 ? '--' : deg(DAYS[d].temp); },
+       graph:function(){ return gLine([{data:DAYS.map(function(x){return C(x.temp);}),color:'#111',w:2},
+                                       {data:DAYS.map(function(x){return C(x.hi);}),color:'#a9a9a9',w:1.6}],
+                                      S.unit==='C'?[22,20,18,16,14]:[72,68,64,61,57]); }},
+      {label:'HIGH', value:function(d){ return deg(DAYS[d].hi); },
+       graph:function(){ return gLine([{data:DAYS.map(function(x){return C(x.hi);}),color:'#111',w:2},
+                                       {data:DAYS.map(function(x){return C(x.temp);}),color:'#a9a9a9',w:1.6}],
+                                      S.unit==='C'?[24,22,20,18,16]:[75,72,68,64,61]); }},
+      {label:'LOW', value:function(d){ return deg(DAYS[d].lo); },
+       graph:function(){ return gLine([{data:DAYS.map(function(x){return C(x.lo);}),color:'#111',w:2},
+                                       {data:DAYS.map(function(x){return C(x.hi);}),color:'#a9a9a9',w:1.6}],
+                                      S.unit==='C'?[22,20,18,16,14]:[72,68,64,61,57]); }},
+      {label:'FEELS LIKE', value:function(d){ return deg(DAYS[d].feels); },
+       graph:function(){ return gLine([{data:DAYS.map(function(x){return C(x.feels);}),color:'#111',w:2},
+                                       {data:DAYS.map(function(x){return C(x.hi);}),color:'#a9a9a9',w:1.6}],
+                                      S.unit==='C'?[24,22,20,18,16]:[75,72,68,64,61]); }},
+      {label:'HUMIDITY', value:function(d){ return DAYS[d].hum+'%'; },
+       graph:function(){ return gLine([{data:DAYS.map(function(x){return x.hum;}),color:'#111',w:2}], [100,75,50,25,0]); }},
+      {label:'DEW POINT', value:function(d){ return deg(DAYS[d].dew); },
+       graph:function(){ return gLine([{data:DAYS.map(function(x){return C(x.dew);}),color:'#111',w:2}],
+                                      S.unit==='C'?[15,14.5,14,13.5,13]:[59,58,57,56,55]); }}
+    ]},
+  { title:'Precip', model:modelPrecip,
+    rows:[
+      {label:'RATE', value:function(){ return U.precip==='mm' ? '4.0 MM' : (4/25.4).toFixed(2)+' IN'; },
+       graph:function(){ return {kind:'area', color:'#26B7FF', data:[1.5,4,3.2,4,1.2,0.6,2.2,2.8], axis:[10,5,0]}; }},
+      {label:'CHANCE', value:function(){ return '55%'; },
+       graph:function(){ return gLine([{data:[40,55,62,55,30,22,38,45],color:'#111',w:2}], [100,75,50,25,0]); }},
+      {label:'TYPE', value:function(){ return 'RAIN'; },
+       graph:function(){ return {kind:'msg', text:'/// NO GRAPH ///'}; }}
+    ]},
+  { title:'Sun', model:modelSun,
+    rows:[
+      {label:'UV INDEX', value:function(){ return '--'; }, graph:function(){ return {kind:'msg', text:'/// NO DATA ///\nCHANGE SOURCE -->'}; }},
+      {label:'SUNRISE', value:function(){ return '7:00A'; }, graph:function(){ return {kind:'msg', text:'/// NO DATA ///\nCHANGE SOURCE -->'}; }},
+      {label:'SUNSET', value:function(){ return '5:39P'; }, graph:function(){ return {kind:'msg', text:'/// NO DATA ///\nCHANGE SOURCE -->'}; }}
+    ]},
+  { title:'Clouds', model:modelClouds,
+    rows:[
+      {label:'CLOUD COVER', value:function(){ return '100%'; },
+       graph:function(){ return {kind:'area', color:'#C8C8C8', data:[100,88,100,82,58,70,96,64], axis:[100,75,50,25,0]}; }}
+    ]},
+  { title:'Air', model:modelAir,
+    rows:[
+      {label:'WIND SPEED', value:function(){ return fmtWind(6); },
+       graph:function(){ return gLine([{data:[6,8,5,6,9,7,6,7],color:'#111',w:2},{data:[4,5,4,5,6,5,4,5],color:'#a9a9a9',w:1.6}], [10,5,0]); }},
+      {label:'WIND GUST', value:function(){ return fmtWind(10); },
+       graph:function(){ return gLine([{data:[10,13,9,10,14,11,10,11],color:'#111',w:2},{data:[6,8,5,6,9,7,6,7],color:'#a9a9a9',w:1.6}], [15,10,5,0]); }},
+      {label:'WIND DIRECTION', value:function(){ return 'E'; },
+       graph:function(){ return gLine([{data:[90,80,95,90,85,90,80,88],color:'#111',w:2}], [180,90,0]); }},
+      {label:'VISIBILITY', value:function(){ return '--'; }, graph:function(){ return {kind:'msg', text:'/// NO DATA ///\nCHANGE SOURCE -->'}; }},
+      {label:'PRESSURE', value:function(){ return fmtPress(1019); },
+       graph:function(){ return gLine([{data:[1019,1017,1015,1018,1021,1020,1019,1020],color:'#111',w:2}], [1025,1020,1015,1010]); }},
+      {label:'AQI', value:function(){ return '--'; }, graph:function(){ return {kind:'msg', text:'AQI UNAVAILABLE.\nCHOOSE A DIFFERENT SOURCE'}; }},
+      {label:'POLLEN', value:function(){ return '--'; }, graph:function(){ return {kind:'msg', text:'POLLEN UNAVAILABLE.\nCHOOSE A DIFFERENT SOURCE'}; }}
+    ]},
+  { title:'Moon', model:modelMoon,
+    rows:[
+      {label:'ILLUMINATION', value:function(){ return '0%'; },
+       graph:function(){ return {kind:'area', color:'#C7C7C7', data:[0,4,12,24,38,54,72,88], axis:[100,75,50,25,0]}; }},
+      {label:'PHASE', value:function(){ return 'NEW'; },
+       graph:function(){ return {kind:'area', color:'#C7C7C7', data:[0,4,12,24,38,54,72,88], axis:[100,75,50,25,0]}; }},
+      {label:'MOONRISE', value:function(){ return '7:00A'; },
+       graph:function(){ return {kind:'area', color:'#C7C7C7', data:[0,4,12,24,38,54,72,88], axis:[100,75,50,25,0]}; }},
+      {label:'MOONSET', value:function(){ return '5:22P'; },
+       graph:function(){ return {kind:'area', color:'#C7C7C7', data:[0,4,12,24,38,54,72,88], axis:[100,75,50,25,0]}; }},
+      {label:'FULL MOON', value:function(){ return '16/11/24'; },
+       graph:function(){ return {kind:'area', color:'#C7C7C7', data:[0,4,12,24,38,54,72,88], axis:[100,75,50,25,0]}; }},
+      {label:'NEW MOON', value:function(){ return '1/11/24'; },
+       graph:function(){ return {kind:'area', color:'#C7C7C7', data:[0,4,12,24,38,54,72,88], axis:[100,75,50,25,0]}; }}
+    ]}
+];
+
+/* ============ GRAPH RENDERING ============ */
+var graphBox = document.getElementById('graph-box');
+function dayVariant(data){
+  /* DAY range: an intra-day curve for the selected day, derived from its week values */
+  var base = data[S.day % data.length], out=[], i, v;
+  for (i=0;i<8;i++){ v = base + Math.sin(i/7*Math.PI)*(data[(S.day+1)%data.length]-base)*0.7 + (i%3===0?0.4:-0.2); out.push(Math.round(v*10)/10); }
+  return out;
+}
+function renderGraph(){
+  var m = METRICS[S.metric], cfg = m.rows[S.row].graph();
+  if (cfg.kind==='msg'){ graphBox.innerHTML = '<div class="graph-msg">'+cfg.text+'</div>'; return; }
+  var W=340, H=104, padR=30, padB=16, padL=20, padT=7, plotW=W-padR-padL, plotH=H-padB-padT;
+  var labels = GRAPH_DAYS, selIdx = S.day;
+  var series, axis = cfg.axis;
+  if (cfg.kind==='area'){ series = [{data:cfg.data, color:cfg.color, w:2, fill:true}]; }
+  else { series = cfg.series.map(function(s){ return {data:s.data, color:s.color, w:s.w, fill:cfg.fill && s===cfg.series[0]}; }); }
+  if (S.range==='day'){
+    labels = ['12A','3A','6A','9A','12P','3P','6P','9P'];
+    series = series.map(function(s){ return {data:dayVariant(s.data), color:s.color, w:s.w, fill:s.fill}; });
+    selIdx = 3;
+  }
+  var max = axis[0], min = axis[axis.length-1];
+  function X(i){ return padL + i/(labels.length-1)*plotW; }
+  function Y(v){ var y = (max-v)/(max-min)*plotH; return padT + Math.max(0, Math.min(plotH, y)); }
+  var svg = '<svg viewBox="0 0 '+W+' '+H+'" width="100%" height="104" role="img" aria-label="'+m.title+' graph">';
+  axis.forEach(function(a){
+    svg += '<text x="'+(W-4)+'" y="'+(Y(a)+3.5)+'" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="9.5" fill="#8a8a8a">'+a+'</text>';
+  });
+  var sx = X(selIdx);
+  svg += '<line x1="'+sx+'" y1="'+padT+'" x2="'+sx+'" y2="'+(padT+plotH)+'" stroke="#a9a9a9" stroke-width="1.4"/>';
+  series.forEach(function(s){
+    var pts = s.data.map(function(v,i){ return X(i).toFixed(1)+','+Y(v).toFixed(1); });
+    if (s.fill) svg += '<path d="M'+pts.join(' L')+' L'+X(s.data.length-1)+','+(padT+plotH)+' L'+X(0)+','+(padT+plotH)+' Z" fill="'+s.color+'" opacity="'+(s.color==='#111'?0.08:0.5)+'"/>';
+    svg += '<path d="M'+pts.join(' L')+'" fill="none" stroke="'+s.color+'" stroke-width="'+s.w+'"/>';
+  });
+  labels.forEach(function(l,i){
+    if (S.range==='week' && i===selIdx){
+      var tw = l.length*7.4+12;
+      svg += '<rect x="'+(X(i)-tw/2)+'" y="'+(padT+plotH+2)+'" width="'+tw+'" height="14" rx="7" fill="#111"/>'+
+             '<text x="'+X(i)+'" y="'+(padT+plotH+12.5)+'" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" font-weight="700" fill="#fff">'+l+'</text>';
+    } else {
+      svg += '<text x="'+X(i)+'" y="'+(padT+plotH+13)+'" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#8a8a8a">'+l+'</text>';
+    }
+  });
+  svg += '</svg>';
+  graphBox.innerHTML = svg;
+}
+
+/* ============ DETAIL RENDERING ============ */
+var detail = document.getElementById('detail'), flipInner = document.getElementById('flip-inner'),
+    titleEl = document.getElementById('d-title'), modelZone = document.getElementById('model-zone'),
+    tableEl = document.getElementById('d-table'), dayLabelEl = document.getElementById('day-label'),
+    dotsEl = document.getElementById('d-dots');
+METRICS.forEach(function(){ var i=document.createElement('i'); dotsEl.appendChild(i); });
+function renderTable(){
+  var m = METRICS[S.metric]; tableEl.innerHTML='';
+  m.rows.forEach(function(r, i){
+    var b = document.createElement('button'); b.className = 'trow'+(i===S.row?' sel':'');
+    b.innerHTML = '<span>'+r.label+'</span><span class="leader"></span><span class="val">'+r.value(S.day)+'</span>';
+    b.addEventListener('click', function(){ S.row = i; renderTable(); renderGraph(); });
+    tableEl.appendChild(b);
+  });
+}
+var flipAngle = 0;
+function spinCarousel(dir){
+  flipAngle += (dir || 1) * 360;
+  flipInner.style.transition = 'transform .8s cubic-bezier(.3,.7,.3,1)';
+  flipInner.style.transform = 'rotateY(' + flipAngle + 'deg)';
+}
+function fastSpin(el){
+  el.classList.remove('fast-spin'); void el.offsetWidth; el.classList.add('fast-spin');
+  setTimeout(function(){ el.classList.remove('fast-spin'); }, 750);
+}
+function renderDetail(dir){
+  var m = METRICS[S.metric];
+  titleEl.textContent = m.title;
+  modelZone.innerHTML = m.model();
+  dayLabelEl.textContent = DAYS[S.day].full;
+  dotsEl.querySelectorAll('i').forEach(function(el,i){ el.classList.toggle('on', i===S.metric); });
+  if (dir){ spinCarousel(dir); }
+  var moon = document.getElementById('model-moon');
+  if (moon){ moon.classList.remove('crescent'); void moon.offsetWidth; moon.classList.add('crescent');
+    moon.addEventListener('click', function(e){ e.stopPropagation(); fastSpin(moon); }); }
+  var msun = modelZone.querySelector('.model-sun');
+  if (msun){ msun.addEventListener('click', function(e){ e.stopPropagation(); fastSpin(msun); }); }
+  var mg = document.getElementById('model-giant');
+  if (mg){ mg.addEventListener('click', function(e){ e.stopPropagation(); spinDigits(); }); }
+  var dy = DAYS[S.day];
+  var coT = document.getElementById('co-temp'), coF = document.getElementById('co-feels'),
+      coH = document.getElementById('co-hum'), coD = document.getElementById('co-dew');
+  if (coT) coT.textContent = 'TEMP: '+C(dy.temp)+'°';
+  if (coF) coF.textContent = 'FEELS: '+C(dy.feels)+'°';
+  if (coH) coH.textContent = 'HUM: '+dy.hum+'%';
+  if (coD) coD.textContent = 'DEW: '+C(dy.dew)+'°';
+  renderTable(); renderGraph(); renderSlider();
+}
+function spinDigits(){
+  var g = document.getElementById('model-giant');
+  if (g){ sndSpin(); g.classList.remove('spin'); void g.offsetWidth; g.classList.add('spin');
+    setTimeout(function(){ g.classList.remove('spin'); }, 600); }
+}
+function setMetric(i, dir){
+  var target = (i + METRICS.length) % METRICS.length;
+  if (target === S.metric) return;
+  var d = dir || (target > S.metric ? 1 : -1);
+  /* cloudOut, blend 0.2s: the clouds animate out before the new model animates in (cloudIn) */
+  var cluster = modelZone.querySelector('.cloud-cluster');
+  if (cluster && METRICS[S.metric].title === 'Clouds'){
+    cluster.classList.add('cloud-out');
+    setTimeout(function(){ S.metric = target; S.row = 0; renderDetail(d); }, 200);
+    return;
+  }
+  S.metric = target; S.row = 0; sndModelS(); renderDetail(d);
+}
+function setDay(i, fromSlider){
+  var changed = i !== S.day;
+  if (changed) sndDayS();
+  S.day = Math.max(0, Math.min(7, i));
+  dayLabelEl.textContent = DAYS[S.day].full;
+  if (S.metric===0){
+    var g = document.getElementById('model-giant');
+    if (g && changed){ spinDigits(); setTimeout(function(){ var gg=document.getElementById('model-giant'); if (gg) gg.textContent = C(DAYS[S.day].temp); }, 140); }
+  } else if (changed && METRICS[S.metric].title==='Moon'){ renderDetail(false); }
+  renderTable(); renderGraph(); renderSlider();
+}
+
+/* ============ DAY SLIDER ============ */
+var slider = document.getElementById('dslider'), dsFill = document.getElementById('ds-fill'),
+    dsHandle = document.getElementById('ds-handle'), dsDots = document.getElementById('ds-dots'),
+    tlCircle = document.getElementById('tl-circle');
+DAYS.forEach(function(_, i){
+  var d = document.createElement('span'); d.className='dot'; d.style.left = (i/7*100)+'%'; dsDots.appendChild(d);
+});
+function renderSlider(){
+  var pct = S.day/7*100;
+  dsFill.style.width = pct+'%'; dsHandle.style.left = pct+'%';
+  if (tlCircle) tlCircle.textContent = S.day===0 ? 'NOW' : DAYS[S.day].short;
+  dsDots.querySelectorAll('.dot').forEach(function(d,i){ d.classList.toggle('passed', i<=S.day); });
+  slider.setAttribute('aria-valuenow', S.day);
+  slider.setAttribute('aria-valuetext', DAYS[S.day].full);
+}
+function sliderFromEvent(e){
+  var r = slider.getBoundingClientRect();
+  var x = (e.clientX - r.left)/r.width;
+  return Math.round(Math.max(0, Math.min(1, x))*7);
+}
+var sliding = false;
+function scrubTilt(e){
+  var g = document.getElementById('model-giant'); if (!g) return;
+  var r = slider.getBoundingClientRect();
+  var v = Math.max(0, Math.min(7, (e.clientX - r.left) / r.width * 7));
+  g.classList.add('scrubbing');
+  g.style.transform = 'rotateY(' + ((v - Math.round(v)) * 56).toFixed(1) + 'deg)';
+}
+function endScrub(){
+  var g = document.getElementById('model-giant'); if (!g) return;
+  g.classList.remove('scrubbing'); g.style.transform = '';
+}
+slider.addEventListener('pointerdown', function(e){ sliding = true; slider.setPointerCapture(e.pointerId); scrubTilt(e); setDay(sliderFromEvent(e), true); e.stopPropagation(); });
+slider.addEventListener('pointermove', function(e){ if (sliding){ scrubTilt(e); setDay(sliderFromEvent(e), true); } });
+slider.addEventListener('pointerup', function(){ sliding = false; endScrub(); });
+slider.addEventListener('pointercancel', function(){ sliding = false; endScrub(); });
+slider.addEventListener('keydown', function(e){
+  if (e.key==='ArrowLeft'){ setDay(S.day-1); e.preventDefault(); }
+  if (e.key==='ArrowRight'){ setDay(S.day+1); e.preventDefault(); }
+});
+
+/* ============ DAY / WEEK TOGGLE ============ */
+var dwSwitch = document.getElementById('dw-switch');
+function setRange(r){
+  S.range = r;
+  dwSwitch.className = 'dw-switch '+r;
+  dwSwitch.setAttribute('aria-checked', r==='week');
+  document.getElementById('dw-day').classList.toggle('on', r==='day');
+  document.getElementById('dw-week').classList.toggle('on', r==='week');
+  renderGraph();
+}
+dwSwitch.addEventListener('click', function(e){ e.stopPropagation(); setRange(S.range==='week' ? 'day' : 'week'); });
+document.getElementById('dw-day').addEventListener('click', function(e){ e.stopPropagation(); setRange('day'); });
+document.getElementById('dw-week').addEventListener('click', function(e){ e.stopPropagation(); setRange('week'); });
+
+/* ============ OPEN / CLOSE + SWIPES ============ */
+var closingDetail = false;
+function openDetail(){
+  if (closingDetail) return;
+  document.getElementById('app').classList.add('exploded');
+  detail.classList.remove('closing'); detail.classList.add('open');
+  detail.classList.remove('shake'); void detail.offsetWidth; detail.classList.add('shake');
+  var ms = document.getElementById('main-screen');
+  ms.classList.remove('shake'); void ms.offsetWidth; ms.classList.add('shake');
+  haptic(true); sndExplode();
+  renderDetail(1);
+  requestAnimationFrame(function(){ renderSlider(); });
+}
+function closeDetail(){
+  if (!detail.classList.contains('open') || closingDetail) return;
+  closingDetail = true;
+  haptic(false); sndCloseS();
+  document.getElementById('app').classList.remove('exploded');
+  detail.classList.add('closing');
+  setTimeout(function(){ detail.classList.remove('open'); detail.classList.remove('closing'); closingDetail = false; }, 300);
+}
+document.getElementById('main-screen').addEventListener('click', function(e){
+  if (e.target.closest('.menu-btn')) return;
+  openDetail();
+});
+document.getElementById('btn-menu').addEventListener('click', function(e){ e.stopPropagation(); openSheet('sheet-menu'); });
+document.getElementById('btn-close-detail').addEventListener('click', function(e){ e.stopPropagation(); closeDetail(); });
+dayLabelEl.addEventListener('click', function(e){ e.stopPropagation(); closeDetail(); });
+document.getElementById('btn-prev-metric').addEventListener('click', function(e){ e.stopPropagation(); setMetric(S.metric-1, -1); });
+document.getElementById('btn-next-metric').addEventListener('click', function(e){ e.stopPropagation(); setMetric(S.metric+1, 1); });
+var touchStart = null;
+detail.addEventListener('pointerdown', function(e){ touchStart = {x:e.clientX, y:e.clientY}; });
+detail.addEventListener('pointerup', function(e){
+  if (!touchStart || sliding) { touchStart = null; return; }
+  var dx = e.clientX - touchStart.x, dy = e.clientY - touchStart.y;
+  if (Math.abs(dx) > 64 && Math.abs(dx) > Math.abs(dy)*1.4){ setMetric(S.metric + (dx < 0 ? 1 : -1), dx < 0 ? 1 : -1); }
+  else if (dy > 84 && Math.abs(dy) > Math.abs(dx)*1.4){ closeDetail(); }
+  touchStart = null;
+});
+
+/* ============ SHEETS ============ */
+function openSheet(id){
+  document.querySelectorAll('.sheet').forEach(function(s){ s.classList.remove('open'); });
+  document.getElementById(id).classList.add('open');
+  sndMenuS();
+}
+function closeSheets(){ document.querySelectorAll('.sheet').forEach(function(s){ s.classList.remove('open'); }); sndMenuS(); }
+document.querySelectorAll('[data-open]').forEach(function(b){ b.addEventListener('click', function(){ openSheet(b.getAttribute('data-open')); }); });
+document.querySelectorAll('[data-close]').forEach(function(b){ b.addEventListener('click', closeSheets); });
+document.querySelectorAll('[data-back]').forEach(function(b){ b.addEventListener('click', function(){ openSheet(b.getAttribute('data-back')); }); });
+
+/* themes (kept behind the menu; Graphite stays the video default) */
+var THEMES = [
+ {name:'Andy', light:'rgb(255,178,0)', dark:'rgb(30,15,0)', sun:'rgb(255,255,255)', edition:'RARE'},
+ {name:'Bricks', light:'rgb(255,255,255)', dark:'rgb(40,40,40)', sun:'rgb(255,218,54)', edition:'STANDARD'},
+ {name:'Cedar', light:'rgb(124,176,172)', dark:'rgb(255,236,166)', sun:'rgb(255,255,255)', edition:'ARTIST'},
+ {name:'Chroma', light:'rgb(255,255,255)', dark:'rgb(40,40,40)', sun:'rgb(255,178,0)', edition:'RARE'},
+ {name:'Depth', light:'rgb(255,255,255)', dark:'rgb(24,24,28)', sun:'rgb(150,150,150)', edition:'STANDARD'},
+ {name:'Graphite', light:'rgb(255,255,255)', dark:'rgb(40,40,40)', sun:'rgb(255,31,44)', edition:'COMMON'},
+ {name:'Guava', light:'rgb(255,231,51)', dark:'rgb(255,92,138)', sun:'rgb(255,255,255)', edition:'STANDARD'},
+ {name:'Karat', light:'rgb(255,255,255)', dark:'rgb(52,66,77)', sun:'rgb(219,174,69)', edition:'LEGENDARY'},
+ {name:'Monsters', light:'rgb(255,255,255)', dark:'rgb(40,40,40)', sun:'rgb(255,178,0)', edition:'SECRET'},
+ {name:'Normal', light:'rgb(255,255,255)', dark:'rgb(40,40,40)', sun:'rgb(242,128,185)', edition:'STANDARD'},
+ {name:'Opal', light:'rgb(255,255,255)', dark:'rgb(20,10,64)', sun:'rgb(255,255,255)', edition:'LEGENDARY'},
+ {name:'Persimmon', light:'rgb(232,224,216)', dark:'rgb(255,80,0)', sun:'rgb(255,255,255)', edition:'STANDARD'},
+ {name:'Mem / Presstube', light:'rgb(255,255,255)', dark:'rgb(40,40,40)', sun:'rgb(255,178,0)', edition:'ARTIST'},
+ {name:'Sesame', light:'rgb(70,67,65)', dark:'rgb(0,0,0)', sun:'rgb(255,255,255)', edition:'STANDARD'},
+ {name:'Wireframe', light:'rgb(255,255,255)', dark:'rgb(40,40,40)', sun:'rgb(255,59,48)', edition:'STANDARD'}
+];
+function lum(s){ var m = s.match(/\d+/g); return (0.2126*m[0]+0.7152*m[1]+0.0722*m[2])/255; }
+function titleCase(s){ return s.charAt(0)+s.slice(1).toLowerCase(); }
+var themeGrid = document.getElementById('theme-grid');
+THEMES.forEach(function(t){
+  var b = document.createElement('button'); b.className = 'theme-card'+(t.name==='Graphite'?' sel':'');
+  b.style.background = t.light; b.style.color = lum(t.light) > 0.55 ? '#111' : '#fff';
+  b.innerHTML = '<div class="nm">'+t.name+'</div><div class="ed">'+t.edition+' EDITION</div>'+
+    '<div class="sw"><i style="background:'+t.light+'"></i><i style="background:'+t.dark+'"></i><i style="background:'+t.sun+'"></i></div>';
+  b.addEventListener('click', function(){
+    themeGrid.querySelectorAll('.theme-card').forEach(function(x){ x.classList.remove('sel'); }); b.classList.add('sel');
+    document.getElementById('menu-theme-val').textContent = t.name+' · '+titleCase(t.edition);
+  });
+  themeGrid.appendChild(b);
+});
+
+/* sources */
+var SOURCES = ['Apple Weather','AccuWeather','Tomorrow','OpenWeather','Foreca'];
+var srcList = document.getElementById('source-list'), curSource = 'Apple Weather';
+SOURCES.forEach(function(name){
+  var b = document.createElement('button'); b.className = 'src-item'+(name===curSource?' sel':'');
+  b.innerHTML = '<span>'+name+'</span>'+(name==='Apple Weather' ? '<span class="def">DEFAULT · WEATHERKIT</span>' : '<span class="def">SERVER-SIDE</span>');
+  b.addEventListener('click', function(){ curSource = name;
+    document.getElementById('menu-source-val').textContent = name;
+    srcList.querySelectorAll('.src-item').forEach(function(x){ x.classList.remove('sel'); }); b.classList.add('sel'); });
+  srcList.appendChild(b);
+});
+
+/* units — converts the Lisbon °C data everywhere */
+document.querySelectorAll('#seg-temp button').forEach(function(b){
+  b.addEventListener('click', function(){
+    S.unit = b.getAttribute('data-unit');
+    document.querySelectorAll('#seg-temp button').forEach(function(x){ x.classList.toggle('sel', x===b); });
+    updateUnitsLabel();
+    var his = strip.querySelectorAll('.hi'), los = strip.querySelectorAll('.lo');
+    stripData.forEach(function(d,i){ his[i].textContent = C(d.hi); los[i].textContent = C(d.lo); });
+    var g = document.querySelector('#main-screen .giant');
+    if (g) g.innerHTML = '<span class="one">'+String(C(19)).charAt(0)+'</span><span class="nine">'+String(C(19)).slice(1)+'</span>';
+    if (detail.classList.contains('open')) renderDetail(false);
+  });
+});
+
+/* toggles */
+function wireSwitch(id){
+  var el = document.getElementById(id);
+  el.addEventListener('click', function(){ el.classList.toggle('on'); el.setAttribute('aria-checked', el.classList.contains('on')); });
+}
+wireSwitch('sw-feels'); wireSwitch('sw-minimal'); wireSwitch('sw-sound');
+
+/* billing */
+document.querySelectorAll('#seg-billing button').forEach(function(b){
+  b.addEventListener('click', function(){
+    document.querySelectorAll('#seg-billing button').forEach(function(x){ x.classList.remove('sel'); }); b.classList.add('sel');
+    document.getElementById('billing-note').textContent = b.getAttribute('data-bill')+
+      ' billing selected. Descriptive only — the real app sells through RevenueCat / StoreKit and product prices live server-side, so there is no checkout in this preview.';
+  });
+});
+
+/* widgets — Lisbon data */
+(function(){
+  var w = [
+    ['CURRENT', '19° Clear', 'Lisbon · feels like 21°'],
+    ['FORECAST', '8 days', 'Today 15° / 21° · Friday rain'],
+    ['MOON', 'New Moon', '0% illuminated · full moon 16/11/24'],
+    ['POLLEN', '--', 'No data from the active source'],
+    ['AIR QUALITY', 'AQI --', 'No data from the active source'],
+    ['TEMPERATURE', '19°', 'Dew point 15° · humidity 96%'],
+    ['CONDITIONS', 'Clear', 'Wind 6 m/s E · gust 10 m/s'],
+    ['QUICK LAUNCH', 'Open Weather', 'Jumps straight to the giant temperature']
+  ];
+  var g = document.getElementById('widget-grid');
+  w.forEach(function(x){ var d=document.createElement('div'); d.className='widget-card';
+    d.innerHTML = '<div class="wt">'+x[0]+'</div><div class="wv">'+x[1]+'</div><div class="ws">'+x[2]+'</div>'; g.appendChild(d); });
+})();
+
+/* source check — video frame by frame */
+var CHECKS = [
+ ['Mobbin — 107 screens, 21 flows','Mobbin lists (Not Boring) Weather with 107 screens and 21 flows: Onboarding, Subscribing, App walkthrough, Home > Today\u2019s weather incl. Switching to day view, View alerts, Changing skin/location/units/source, Share weather, Playing a game, Membership, Customizing widgets, Support, Widgets. All except Onboarding are Pro-locked at $10/month, so the exploded/detail, settings, themes and widget screens could not be read from Mobbin and remain cloned from the user\u2019s video + v2 source. The Mobbin onboarding, Super paywall and Partly Cloudy home in this preview are built from the screens that were readable.','part'],
+ ['Main screen — the video frame','Pure white #FFFFFF full-bleed, 9:41 status bar, LISBON in tracked mono caps, thin grey circle menu button top-right. No yellow, no blue, no cards.','done'],
+ ['Red sun + birds + orbits','Flat grainy red rgb(255,31,44) disc at ~55% of screen width — NO rays, NO spikes, NO glow aura, NO pulse. Three tiny black bird silhouettes cross it, 2–3 very thin light-grey orbit arcs pass diagonally in front of and behind it, and the digits carry a red tint at the top edge where they meet the sun.','done'],
+ ['Giant 19','Anton condensed digits sized in container units (min of 45vh / 74cqw) so “19” always fits centred and fully visible. Built like the real thing: the 1 is narrowed, the 9 has its thin vertical white slit, an extrusion underlay carries the layered bevel shadows, and the face is a gradient — red tint at the very top where the digits meet the sun, bevel band beneath. No degree symbol, no °C. “Clear” in heavy rounded black beneath.','done'],
+ ['8-day strip','TODAY WED THU FRI SAT SUN MON TUE in grey mono caps, flat icons (black bubble cloud, red sun, cloud with 2 cyan drops), bold black highs 21 19 18 18 23 22 22 23, light-grey lows 15 13 13 13 15 16 16 16.','done'],
+ ['Tap to explode','Tapping anywhere opens the detailed view: light-grey radial vignette (#E9E9E9 centre → #C9C9C9 edges), NOW label, 64px “Temp” title, the giant 19 again. X, the top label, or a swipe down goes back.','done'],
+ ['Temp table','TEMPERATURE 19°C / HIGH 21°C / LOW 15°C / FEELS LIKE 21°C / HUMIDITY 96% / DEW POINT 15°C in mono caps with dotted leaders; the selected row is a full-width black pill with white text and switches the graph.','done'],
+ ['Temp graph','Thin black line + fainter grey line across all 8 days TODAY–TUE, right axis 22 20 18 16 14, vertical grey line at the selected day with a black pill day label. Every metric graph shows all 8 day labels.','done'],
+ ['Day / timeline bar','Restyled to the trailer’s 24-hour timeline bar: rounded grey track, blue centre segment, 44 on the light part and 55 on the blue, hour marks NOW 9 12P 3 6 9 12A 3 underneath, a grey circle above showing the selected day, and the black-and-white moon dot as the scrub handle. Scrubbing still runs the 8 days NOW → TUESDAY, NOV 5; the digits spin in 3D and read 18 on Friday while TEMPERATURE shows “--”.','done'],
+ ['DAY / WEEK toggle','DAY in grey, WEEK in black, pill switch with the black dot on the right (WEEK). Switching re-ranges the graph to an intra-day curve.','done'],
+ ['Precip screen','Jagged black low-poly rock, translucent cyan water layer on top, cyan pill rain falling. RATE 4.0 MM pill / CHANCE 55% / TYPE RAIN; cyan area graph (axis 10 5 0), CHANCE switches to a 100–0 line, TYPE shows /// NO GRAPH ///.','done'],
+ ['Sun screen','The same big red disc. UV INDEX -- pill / SUNRISE 7:00A / SUNSET 5:39P; graph reads /// NO DATA /// CHANGE SOURCE --> (the source string, verbatim).','done'],
+ ['Clouds screen','Matte black bubble-cloud cluster with two thin orbit rings. Single black-pill row: CLOUD COVER 100%. Faint grey area graph, axis 100 75 50 25 0.','done'],
+ ['Air screen','Black wind vane / anemometer — pole, spinning cups, “N” arrow, hexagonal tail, thin orbit ring. WIND SPEED 6 M/S pill, GUST 10 M/S, DIRECTION E, VISIBILITY --, PRESSURE 1019 HPA, AQI --, POLLEN --; two-line graph, axis 10 5 0; the “--” rows show NO DATA.','done'],
+ ['Moon screen','The moon is a shaded 3D sphere: at rest a matte black disc (new moon), mid-spin it flashes a white lit sphere with a black crescent edge. ILLUMINATION 0% pill / PHASE NEW / MOONRISE 7:00A / MOONSET 5:22P / FULL MOON 16/11/24 / NEW MOON 1/11/24; faint area graph.','done'],
+ ['Metric swipe','Swipe left/right (or the ‹ › buttons) cycles Temp → Precip → Sun → Clouds → Air → Moon; the title itself spins a full 3D turn with the model — mirrored mid-flip, edge-on into a thin slab — exactly as in the recording.','done'],
+ ['Menu stays behind the button','Themes (15, exact source palettes), 5 data sources, locations, units, widgets, membership tiers and Cloudburst all live behind the top-right circle button and never touch the default screen.','done'],
+ ['Real 3D models','The app uses SceneKit scenes; this preview rebuilds the same shapes in CSS/SVG — digits, rock, cloud cluster, vane and moon read the same at a glance but are not the original meshes.','part'],
+ ['Live weather API','Nothing calls api-weather.andy.works — the video’s Lisbon values are baked in, by design for an offline preview.','miss'],
+ ['Intro spin — base1-animation.json','"intro" → introSpin, then "firstRunComplete": when onboarding ends, the whole scene (sun, birds, lines, clouds, digits) spins ONE full 3D turn and stops, settling face-on. The scene then sits still — it does not loop. Spin happens only on the intro, on tapping the sun/moon, and on scrubbing the day slider; the small idle motions (birds flying, clouds drifting) keep running — the sun itself is flat and still, its orbit arcs static.','done'],
+ ['Sun / moon in-out — graphite-animation.json','sunIn / moonIn: tapping the sun/moon disc spins and scales it out and fades the whole plane — white (255 255 255, noise 0.4, fog 250 250 250 245, dark status bar) for sun, dark (30 30 30, noise 0.5, fog 30 30 30 245, light status bar) for moon — a full scene transition, never an instant swap.','done'],
+ ['Clouds — AppConfig.json, Animation-cloud-in/out.scn','cloudIn / cloudOut / cloudSwap with the source config: 30/5/1 spheres, size scale 0.2–1.8, distance scale 0.4–1.3, speed 0.08–0.15, duration 16.0s, xScale 0.9, globalYOffset 6.0. The black bubble clouds drift continuously at mixed sizes and speeds; leaving the Clouds screen runs cloudOut (0.2s blend) before the next model runs cloudIn. The Mobbin Partly Cloudy home clouds drift too.','done'],
+ ['Lightning bolts — Animation-bolt.scn','boltIn / boltOut on bolt-1 / bolt-2 / bolt-3 with repeatCount -1 (infinite): the three bolts in Precip flash and pop repeatedly, staggered, forever.','done'],
+ ['Particles / rain — Animation-particle-pop.scn, Animation-pop.scn','Precip rain pills fall continuously, staggered and looping; the 8-day strip rain drops fall too; the rock scene pops in (Animation-pop).','done'],
+ ['3D spinners — Basic3DSpinner / NodeSpinner','RotateAction rotateByAngle:aroundAxis:duration: — the sun disc, moon sphere, wind vane, rock and the digits all idle-spin / sway slowly in 3D, and spin fast on tap (sun-tapped / moon-tapped). The moon sphere keeps turning and flashes its white crescent mid-spin.','done'],
+ ['Exploded view — ExplodedCarousel, Animation-CameraShake.scn','explodeOpenPattern / explodeClosePattern with explodedEnter / explodedExit: tapping the main screen pops the detail view in with a camera shake and scale while the main screen scales down behind the vignette; closing reverses it. Swiping Temp → Precip → Sun → Clouds → Air → Moon is one continuous carousel spin — title + model rotate together, mirrored mid-flip, edge-on as a thin slab — never a snap.','done'],
+ ['Digit spin on scrub','Dragging the day slider tilts the giant digits continuously with the drag and spins them a full 3D turn per day, the new value swapping at the edge-on point.','done'],
+ ['First-launch intro — FirstLaunchIntro.mp4','ONE auto-playing ~8s sequence, no tap-through steps and no captions: dim grey logo → yellow fire-watch tower in rain → desert fly-through → rotating pencil → MOSTLY CLOUDY card → sun egg → deer → morphing app icon → white logo, then WHERE ARE YOU? Only SKIP shows during the intro; tapping anywhere else does nothing. The paywall then slides up over the location screen; its gold coin keeps spinning while it sweeps across the checklist and returns to the corner, so it never stays on top of the text.','done'],
+ ['Motion toggle','Menu → Motion (default ON) pauses every animation on this list, so still vs animated can be compared side by side.','done'],
+ ['ONE integrated scene — Main.scn / Models.scn','The main screen is rebuilt as ONE scene under one perspective container and one rAF animation clock: sun_ (flat, no aura), moon, cloud nodes, birds and the giant digits all live in #scene3d and move together — the intro spin rotates all of them at once, the explode camera-shake shakes the whole scene, and sunIn/moonIn re-tint the scene fog plane + background together. Not separate layered images. (Geometry is still CSS/SVG, not the original .scn meshes — see “Real 3D models”.)','done'],
+ ['Birds — bird_0 / bird_1 / bird_2 on bird_path_0/1/2','Three separate birds, each flying its own looping curved path across the scene on the shared clock, wings flapping; bird_1 passes IN FRONT of the sun (higher z), bird_0 and bird_2 pass BEHIND it — as separate nodes in Models.scn, not one pasted silhouette strip.','done'],
+ ['Cloud drift — AppConfig.json','In-scene cloud nodes (exactly 30 spheres in 10 clusters across 3 depth layers — AppConfig Cloud-numberOfSpheres [30, 5, 1], first value 30) drift continuously across the whole scene on the shared clock, driven by the AppConfig ranges: cycle 16.0s, size scale 0.2–1.8, distance scale 0.4–1.3 (nearer = larger + faster + in front of the digits, farther = smaller + slower + behind the sun), speed 0.08–0.15, xScale 0.9, globalYOffset 6.0. Visible in the Partly Cloudy home state; the exploded Clouds cluster keeps its own CSS drift with the cloudIn/cloudOut 0.2s blend.','done'],
+ ['Per-theme sunIn / moonIn — *-animation.json','Each theme now carries its exact plane colours from its own animation file (e.g. bricks day 0 182 54 / night 0 43 110; karat night 12 22 29; monster night 17 142 210; persimmon night 255 85 0; graphite fog alpha 225 not base1’s 250). Picking a theme in the Themes sheet re-aims the sun/moon transition: the scene fog plane flashes the theme colour and the night background becomes that theme’s moonIn colour. Noise intensity (0.4/0.5 vs 0.0) and cedar/depth/guava crossFadeNodes are approximated by the single fog flash, not reproduced per-node.','part'],
+ ['Intro spin gating','intro / firstRunSpinInfinite / firstRunComplete exist ONLY in base1, graphite and presstube animation files. The preview now gates on the selected theme: Graphite and Mem/Presstube intro-spin; the other 13 themes do not.','done'],
+ ['Theme palettes corrected — audit §1','Graphite clouds rgb(200,200,200) (was 199); Opal dark rgb(20,10,64) (was 19,9,63); Presstube + Chroma sun rgb(255,178,0) (was 177); Karat sun rgb(219,174,69) (was 173). Re-checked against the *-colors.json files: Cedar sun is rgb(255,236,166) (was white); Wireframe sun is rgb(255,31,44) (was 255,59,48) and its edition is LEGENDARY (was STANDARD); Bricks and Normal palettes have dark = white, on their real fields — Bricks green rgb(0,182,54), Normal rgb(128,128,255) — which picking those themes now uses. Every theme card now also carries its full rain / snow / bolt colours from the audit table, and editions are corrected (Bricks/Chroma/Guava/Normal/Persimmon/Sesame are RARE, Depth is RARE — several were mislabelled STANDARD).','done'],
+ ['Sound — 83 .caf categories, synthesised','The Sound & Music toggle now actually makes sound: WebAudio-SYNTHESISED equivalents of the .caf categories — a looping filtered-noise ambience, sun-tapped (6) / moon-tapped (5) note sets, spin-fast sweep, explode-enter / detailed-exit, menu open/close, ui-day-select ticks and model-change blips, wired to the real interactions. These are synth approximations generated in code: the real .caf files are NOT shipped and cannot be extracted here — do not read this as the original audio.','part'],
+ ['Haptics — explode-open.ahap 0.38s / explode-close 0.24s','The web has no .ahap haptics. Substitute: navigator.vibrate (38ms open / 24ms close, where the device supports it) plus a visual pulse on the app at exactly the .ahap durations (0.38s open, 0.24s close). On desktop and unsupported browsers only the visual pulse happens.','part'],
+ ['Digit shapes / kerning — Numbers.scn','Still approximated: the preview uses Anton; the real digits are per-theme 3D models (presstube has per-glyph .ktx textures, monster an 11 MB model set) with per-theme character-pair spacing (graphite: “7”+“,” −0.8, “7”+“.” −0.6, “*”+“1” +0.4…). The narrow “1”, the “9” slit and the sun’s red tint at the top are imitated, not the real meshes or kerning table.','part'],
+ ['Minutely precip curve — FULL 60 points','Fixed in Menu → DemoData — Seattle: the complete 60-minute series, not just the rising half — 0.0 → peak 0.34 in/hr at minutes 15–17 → 0 by minute 39 → 0 to minute 60, with the minutely temperature line falling steadily 57.49°F → 51.79°F (minutes 3–60) drawn on the same graph.','done'],
+ ['Full daily / hourly fields — DemoData','Menu → DemoData — Seattle now shows every field: per-day feels min/max (day 1 maxFeels 60 vs maxTemp 77), dew 45, humidity 80, pressure 20, UV 10, moon phase per day (day 0 Third Quarter, rest New), wind ranges (day 0: 20–30 mph; day 2: 35 mph), all 26 hourly entries with cloudCover, the 70 mph snowHeavy hour, 30 mph thunderstorm hour and hourly rain/snow 0.1 — plus the full current block (AQI 300, pollen 100×4, visibility 10000).','done'],
+ ['Units — full picker','Menu → Units now has the complete set from the source strings: temperature °C/°F, wind m/s · km/h · mph · kn · Bft, pressure hPa · inHg · mb, distance km/mi, precipitation millimeters/inches. Wind/pressure/precip convert the exploded Air + Precip rows live (6 m/s = 22 km/h = 13 mph = 12 kn = 4 Bft; 1019 hPa = 30.09 inHg; 4.0 mm = 0.16 in).','done'],
+ ['Unavailable states — verbatim strings','Air → AQI graph now reads “AQI UNAVAILABLE. CHOOSE A DIFFERENT SOURCE” and POLLEN reads “POLLEN UNAVAILABLE. CHOOSE A DIFFERENT SOURCE” (the exact source strings, replacing the generic NO DATA there); the Data Source sheet states “ACCUWEATHER SOURCE REQUIRED” for pollen whenever a non-AccuWeather source is active.','done'],
+ ['Holiday events — Events.scn','Menu → Events lists all of them with the verbatim greetings — Boo! (Halloween), Happy New Year!, Freedom, Baby!, It’s a Mario Day!, Oh, Golly! (Mickey), Happy 3.1415926535… (Pi Day), Earth Day, Spring/Fall Equinox, Summer/Winter Solstice, Feel the Love (Valentine) — and tapping one plays the greeting as an overlay on the main scene. The real event scenes are 3D (.scn); the overlay is a banner approximation.','part'],
+ ['Alternate app icons — 14','Menu → App Icons shows all 14 from Info.plist (andy, bricks, cedar, chroma, depth, guava, karat, monster, normal, opal, persimmon, presstube, sesame, wireframe) and correctly has NO graphite icon — Graphite is the default. Tiles are drawn from each theme’s palette; the real icon artwork sits in Assets.car and could not be extracted, so these are colour-accurate placeholders, not the real icons.','part'],
+ ['Daily Report','Menu → Daily Report composes the report from the video’s Lisbon values. Flagged honestly: the binary has a DailyReport symbol but Localizable.strings has no UI copy for it (likely a notification/share payload), so the layout is a reconstruction, not a cloned screen.','part'],
+ ['Alerts — none in effect','No alert payload exists in the video, DemoData or readable Mobbin screens, so the menu and the Alerts screen read “Alerts — none in effect”. No “IN EFFECT” label is shown, and no alert is invented.','done'],
+ ['Sample data — Nov 2024, not live','Sample data from the user’s video, Nov 2024 — not live. The video’s own data is late Oct / early Nov 2024: slider “SATURDAY, NOV 2”, Moon FULL MOON 16/11/24, NEW MOON 1/11/24, status bar 9:41. Those exact video values are kept.','part'],
+ ['Moonrise 7:00A = sunrise 7:00A — video-derived','Moonrise 7:00A equalling sunrise 7:00A is video-derived — flagged here as video-derived; the value itself is not changed.','part'],
+ ['“Clear” vs humidity 96% / cloud cover 100% / precip 55%','The “Clear” main condition contradicts humidity 96%, cloud cover 100% and precip chance 55% — that contradiction is in the video’s own data. It is noted here exactly; the video’s values are not changed.','part'],
+ ['NO DATA / “--” rows — verbatim, nothing invented','The Sun screen’s “/// NO DATA /// CHANGE SOURCE -->” and Air’s “--” rows are verbatim from the source — kept exactly. No UV, visibility, AQI or pollen values are invented.','done'],
+ ['Share Weather','Menu → Share Weather shows the exact summary text and copies it to the clipboard (a web preview has no OS share sheet).','done'],
+ ['Locations — search / reorder / delete','Menu → Locations now runs the full Mobbin “Changing location” flow in-session: search adds places, ↑/↓ reorder the saved list, ✕ deletes. Added places are list entries only — Lisbon remains the data set actually displayed, and nothing is stored between sessions.','done'],
+ ['Friday values — VIDEO-DERIVED, NOT SOURCE-VERIFIED','Flagged per the ground-truth audit §10: Friday’s humidity 94% and TEMPERATURE “--” come from the user’s video as read by a builder — they are NOT in DemoData (which says humidity 80 on every day) and appear in no source file. They are kept because the video is the chosen default, but they must not be treated as source-verified ground truth. Same caution for the Mobbin strip (23/15…), which is a different capture day.','part']
+];
+var checkEl = document.getElementById('check-list');
+CHECKS.forEach(function(c){
+  var d = document.createElement('div'); d.className='chk';
+  var chip = c[2]==='done' ? '<span class="chip done">DONE</span>' : c[2]==='part' ? '<span class="chip part">PARTIAL</span>' : '<span class="chip miss">MISSING</span>';
+  d.innerHTML = '<div class="tx"><div class="tt">'+c[0]+'</div><div class="ds">'+c[1]+'</div></div>'+chip;
+  checkEl.appendChild(d);
+});
+
+/* ============ CLOUDBURST GAME ============ */
+var G = { score:0, best:0, time:30, timer:null, spawner:null, playing:false };
+var gArea = document.getElementById('game-area');
+function spawnCloud(){
+  if (!G.playing || document.body.classList.contains('motion-off')) return;
+  var thunder = Math.random() < 0.24;
+  var b = document.createElement('button');
+  b.className = 'gcloud'+(thunder?' thunder':''); b.textContent = thunder ? 'THUNDER' : 'CLOUD';
+  var y = 12 + Math.random()*(gArea.clientHeight-80), fromLeft = Math.random()<0.5;
+  b.style.top = y+'px'; b.style.left = fromLeft ? '-90px' : (gArea.clientWidth+10)+'px';
+  gArea.appendChild(b);
+  var x = fromLeft ? -90 : gArea.clientWidth+10, target = fromLeft ? gArea.clientWidth+100 : -110;
+  var speed = (1.6 + Math.random()*2.2) * (1 + (30-G.time)/40);
+  var step = (target-x)/(140/speed);
+  var iv = setInterval(function(){
+    if (!G.playing){ clearInterval(iv); return; }
+    x += step; b.style.left = x+'px';
+    if ((step>0 && x>target) || (step<0 && x<target)){ clearInterval(iv); if (b.parentNode) b.remove(); }
+  }, 16);
+  b.addEventListener('click', function(){
+    clearInterval(iv); b.remove();
+    G.score += thunder ? -15 : 10; if (G.score<0) G.score = 0;
+    document.getElementById('g-score').textContent = G.score;
+  });
+}
+document.getElementById('g-start').addEventListener('click', function(){
+  if (G.playing) return;
+  G.playing = true; G.score = 0; G.time = 30;
+  document.getElementById('g-score').textContent = '0';
+  document.getElementById('g-time').textContent = '30';
+  this.textContent = 'Playing…';
+  G.spawner = setInterval(spawnCloud, 650); spawnCloud();
+  G.timer = setInterval(function(){
+    G.time--; document.getElementById('g-time').textContent = G.time;
+    if (G.time <= 0){
+      G.playing = false; clearInterval(G.timer); clearInterval(G.spawner);
+      gArea.innerHTML=''; if (G.score > G.best) G.best = G.score;
+      document.getElementById('g-best').textContent = G.best;
+      document.getElementById('g-start').textContent = 'Play again';
+    }
+  }, 1000);
+});
+
+/* ============ FIRST-LAUNCH INTRO — one auto-playing ~8s sequence (FirstLaunchIntro.mp4) ============
+   No tap-through steps, no captions: the scenes advance on a timer. Tapping anywhere except
+   SKIP does nothing. SKIP (or the end of the sequence) lands on WHERE ARE YOU?, and the
+   paywall then slides up over it, as in the user's recording. */
+var ob = document.getElementById('onboarding');
+var introScenes = ob.querySelectorAll('.iscene');
+var introSkipBtn = document.getElementById('intro-skip');
+var introLoc = document.getElementById('intro-loc');
+var introStatus = document.getElementById('intro-status');
+var introTimers = [], pwTimer = null;
+function introLater(fn, ms){ introTimers.push(setTimeout(fn, ms)); }
+function clearIntroTimers(){ introTimers.forEach(clearTimeout); introTimers = []; if (pwTimer){ clearTimeout(pwTimer); pwTimer = null; } }
+function setIntroScene(i){
+  introScenes.forEach(function(s, j){ s.classList.toggle('on', j===i); });
+  introStatus.classList.toggle('on', i===0);
+}
+function playIntro(){
+  clearIntroTimers();
+  closeSheets();
+  findMeArmed = false;
+  var fm = document.getElementById('ob-findme');
+  fm.textContent = 'FIND ME';
+  document.getElementById('ob-loc-note').style.display = 'none';
+  introLoc.classList.remove('on');
+  introSkipBtn.style.display = '';
+  ob.classList.add('open');
+  setIntroScene(-1);
+  void ob.offsetWidth; /* restart the scene CSS animations on replay */
+  var beats = [0, 1050, 2050, 3050, 4000, 4900, 5500, 6950];
+  beats.forEach(function(t, i){ introLater(function(){ setIntroScene(i); }, t); });
+  introLater(showIntroLocation, 8000);
+}
+function showIntroLocation(){
+  clearIntroTimers();
+  setIntroScene(-1);
+  introStatus.classList.remove('on');
+  introSkipBtn.style.display = 'none';
+  introLoc.classList.add('on');
+  /* the paywall slides up over WHERE ARE YOU?, App plan first, as in the video */
+  pwTimer = setTimeout(function(){ pwTimer = null; setPwPlan(true); openSheet('sheet-paywall'); }, 1600);
+}
+function closeOnboarding(){
+  clearIntroTimers();
+  closeSheets();
+  ob.classList.remove('open');
+  introLoc.classList.remove('on');
+  startIntro();
+}
+introSkipBtn.addEventListener('click', function(e){ e.stopPropagation(); showIntroLocation(); });
+var findMeArmed = false;
+document.getElementById('ob-findme').addEventListener('click', function(e){
+  e.stopPropagation();
+  /* FIND ME must not silently fall back: explain first, then let the user continue. */
+  if (!findMeArmed){
+    findMeArmed = true;
+    document.getElementById('ob-loc-note').style.display = 'block';
+    this.textContent = 'CONTINUE WITH LISBON';
+    return;
+  }
+  closeOnboarding();
+});
+function obCityContinue(){
+  var v = document.getElementById('ob-city').value.trim();
+  if (v){ document.querySelector('.topbar .city').textContent = v.toUpperCase(); }
+  closeOnboarding();
+}
+document.getElementById('ob-city-go').addEventListener('click', function(e){ e.stopPropagation(); obCityContinue(); });
+document.getElementById('ob-city').addEventListener('click', function(e){ e.stopPropagation(); });
+document.getElementById('ob-city').addEventListener('keydown', function(e){ e.stopPropagation(); if (e.key==='Enter'){ obCityContinue(); } });
+ob.querySelectorAll('.loc-skip').forEach(function(b){
+  b.addEventListener('click', function(e){ e.stopPropagation(); closeOnboarding(); });
+});
+document.getElementById('menu-replay-ob').addEventListener('click', function(){ playIntro(); });
+playIntro();
+
+/* ============ PAYWALL toggle (Mobbin Super / App) ============ */
+var pwTabApp = document.getElementById('pw-tab-app'), pwTabSuper = document.getElementById('pw-tab-super');
+function setPwPlan(app){
+  var th = document.getElementById('pw-thumb');
+  if (th){ th.style.transform = app ? 'translateX(0)' : 'translateX(100%)'; th.style.background = app ? '#FFC400' : '#8B2EFF'; }
+  pwTabApp.className = app ? 'sel-app' : ''; pwTabSuper.className = app ? '' : 'sel-super';
+  pwTabApp.setAttribute('aria-selected', app); pwTabSuper.setAttribute('aria-selected', !app);
+  document.getElementById('pw-plans-super').style.display = app ? 'none' : '';
+  document.getElementById('pw-plans-app').style.display = app ? '' : 'none';
+}
+pwTabApp.addEventListener('click', function(){ setPwPlan(true); });
+pwTabSuper.addEventListener('click', function(){ setPwPlan(false); });
+document.querySelectorAll('[data-pw-plan]').forEach(function(b){
+  b.addEventListener('click', function(){
+    var wrap = b.parentElement;
+    wrap.querySelectorAll('[data-pw-plan]').forEach(function(x){ x.classList.remove('sel'); });
+    b.classList.add('sel');
+  });
+});
+document.getElementById('pw-restore').addEventListener('click', function(){ /* descriptive only */ });
+document.getElementById('pw-allplans').addEventListener('click', function(){
+  setPwPlan(false);
+  var plans = document.getElementById('pw-plans-super');
+  if (plans && plans.scrollIntoView) plans.scrollIntoView({block:'center'});
+});
+
+/* ============ HOME — MOBBIN PARTLY CLOUDY VARIANT ============ */
+var swPartly = document.getElementById('sw-partly'), mainScreen = document.getElementById('main-screen');
+swPartly.addEventListener('click', function(){
+  var on = swPartly.classList.toggle('on');
+  swPartly.setAttribute('aria-checked', on);
+  mainScreen.classList.toggle('partly', on);
+  document.getElementById('cond-main').textContent = on ? 'Partly Cloudy' : 'Clear';
+  mainScreen.setAttribute('aria-label', on
+    ? 'Lisbon weather, 19 degrees, partly cloudy (Mobbin variant). Tap to open the detailed view.'
+    : 'Lisbon weather, 19 degrees, clear. Tap to open the detailed view.');
+  stripData = on ? MOBBIN_DAYS : DAYS;
+  renderStrip();
+});
+
+/* ============ INTRO SPIN + SUN/MOON SCENE + MOTION TOGGLE (source animations) ============ */
+var scene3d = document.getElementById('scene3d'), introStarted = false, introSettled = false;
+function startIntro(){
+  if (introStarted) return; introStarted = true;
+  /* Source: "intro" runs ONE full turn on first run, then firstRunComplete settles the
+     scene face-on. There is no endless spin by default — the scene then sits still,
+     with only the small idle motions (birds, drifting clouds, pulsing aura, slowly
+     turning orbit lines) continuing. Intro spin exists ONLY in base1, graphite and
+     presstube animation files — the other 12 themes have only sunIn/moonIn. */
+  if (CUR_THEME!=='Graphite' && CUR_THEME!=='Mem / Presstube'){ introSettled = true; return; }
+  scene3d.classList.add('intro-spin');
+  setTimeout(function(){
+    scene3d.classList.remove('intro-spin');
+    introSettled = true; /* firstRunComplete: settle face-on and stop */
+  }, 1650);
+}
+function settleIntro(){
+  /* First interaction settles the intro immediately — no infinite loop to stop. */
+  if (introSettled || !introStarted) return; introSettled = true;
+  scene3d.classList.remove('intro-spin');
+  scene3d.style.transition = ''; scene3d.style.transform = '';
+}
+document.getElementById('main-screen').addEventListener('pointerdown', settleIntro);
+
+/* sunIn / moonIn — tap the sun/moon disc to run the full scene transition */
+var sunDisc = document.getElementById('sun-disc'), mainScreenEl = document.getElementById('main-screen'), sunAnim = false;
+sunDisc.addEventListener('click', function(e){
+  e.stopPropagation(); settleIntro();
+  if (sunAnim) return; sunAnim = true;
+  sunDisc.classList.add('disc-out');
+  setTimeout(function(){
+    var night = mainScreenEl.classList.toggle('night');
+    sunDisc.classList.toggle('moon', night);
+    var coreEl = sunDisc.querySelector('.sun-core');
+    if (coreEl){
+      if (night){ coreEl.style.background = ''; sunDisc.style.background = ''; }
+      else { var ct = null; THEMES.forEach(function(x){ if (x.name===CUR_THEME) ct = x; });
+        if (ct){ coreEl.style.background = 'radial-gradient(circle at 50% 40%, '+ct.sun+' 0%, '+ct.sun+' 62%, '+ct.sun+' 100%)'; sunDisc.style.background = 'radial-gradient(circle at 50% 40%, '+ct.sun+' 0%, '+ct.sun+' 58%, '+ct.sun+' 100%)'; } }
+    }
+    document.getElementById('sun-zone').classList.toggle('is-moon', night);
+    var anim = THEME_ANIM[CUR_THEME] || THEME_ANIM['Graphite'];
+    mainScreenEl.style.background = night ? 'rgb('+anim.night+')' : '';
+    fogFlash(night ? anim.night : anim.day);
+    if (night) sndMoon(); else sndSun();
+    sunDisc.classList.remove('disc-out'); sunDisc.classList.add('disc-in');
+    setTimeout(function(){ sunDisc.classList.remove('disc-in'); sunAnim = false; }, 480);
+  }, 460);
+});
+
+/* Motion toggle — default ON; OFF pauses all animation */
+var swMotion = document.getElementById('sw-motion');
+swMotion.addEventListener('click', function(){
+  var on = swMotion.classList.toggle('on');
+  swMotion.setAttribute('aria-checked', on);
+  document.body.classList.toggle('motion-off', !on);
+});
+
+/* ============ UNITS — full source set (wind Bft/kn/m/s/km/h/mph, pressure hPa/inHg/mb, distance, mm) ============ */
+var U = { wind:'ms', pressure:'hpa', dist:'km', precip:'mm' };
+function bft(ms){ var t=[0.3,1.6,3.4,5.5,8,10.8,13.9,17.2,20.8,24.5,28.5,32.7], n=0; for (var i=0;i<t.length;i++){ if (ms>=t[i]) n=i+1; } return n; }
+function fmtWind(ms){
+  if (U.wind==='kmh') return Math.round(ms*3.6)+' KM/H';
+  if (U.wind==='mph') return Math.round(ms*2.23694)+' MPH';
+  if (U.wind==='kn') return Math.round(ms*1.94384)+' KN';
+  if (U.wind==='bft') return bft(ms)+' BFT';
+  return ms+' M/S';
+}
+function fmtPress(hpa){
+  if (U.pressure==='inhg') return (hpa*0.02953).toFixed(2)+' INHG';
+  if (U.pressure==='mb') return hpa+' MB';
+  return hpa+' HPA';
+}
+function updateUnitsLabel(){
+  var w={ms:'m/s',kmh:'km/h',mph:'mph',kn:'kn',bft:'Bft'}[U.wind], p={hpa:'hPa',inhg:'inHg',mb:'mb'}[U.pressure];
+  document.getElementById('menu-units-val').textContent = '°'+S.unit+' · '+w+' · '+p+' · '+U.dist+' · '+U.precip;
+}
+function wireUnitSeg(id, key){
+  document.querySelectorAll('#'+id+' button').forEach(function(b){
+    b.addEventListener('click', function(){
+      U[key] = b.getAttribute('data-val');
+      document.querySelectorAll('#'+id+' button').forEach(function(x){ x.classList.toggle('sel', x===b); });
+      updateUnitsLabel();
+      if (detail.classList.contains('open')) renderDetail(false);
+    });
+  });
+}
+wireUnitSeg('seg-wind','wind'); wireUnitSeg('seg-pressure','pressure'); wireUnitSeg('seg-dist','dist'); wireUnitSeg('seg-precip','precip');
+updateUnitsLabel();
+
+/* ============ PER-THEME sunIn/moonIn (audit §2) + palette corrections (audit §1) ============ */
+var CUR_THEME = 'Graphite';
+var THEME_ANIM = {
+ 'Andy':{day:'255,178,0',night:'30,30,30'}, 'Bricks':{day:'0,182,54',night:'0,43,110'},
+ 'Cedar':{day:'99,125,81',night:'49,45,49'}, 'Chroma':{day:'255,255,255',night:'0,0,0'},
+ 'Depth':{day:'229,229,229',night:'0,0,0'}, 'Graphite':{day:'255,255,255',night:'30,30,30'},
+ 'Guava':{day:'255,231,51',night:'255,92,138'}, 'Karat':{day:'237,230,221',night:'12,22,29'},
+ 'Monsters':{day:'237,230,221',night:'17,142,210'}, 'Normal':{day:'128,128,255',night:'0,0,0'},
+ 'Opal':{day:'255,255,255',night:'0,0,0'}, 'Persimmon':{day:'232,224,216',night:'255,85,0'},
+ 'Mem / Presstube':{day:'250,250,250',night:'30,30,30'}, 'Sesame':{day:'70,67,65',night:'0,0,0'},
+ 'Wireframe':{day:'229,229,229',night:'0,0,0'}
+};
+var THEME_EXTRA = {
+ 'Andy':{edition:'RARE',clouds:'rgb(171,100,0)',rain:'rgb(38,183,255)',snow:'rgb(176,148,255)',bolt:'rgb(255,255,255)'},
+ 'Bricks':{edition:'RARE',dark:'rgb(255,255,255)',field:'rgb(0,182,54)',sun:'rgb(255,218,54)',clouds:'rgb(0,0,0)',rain:'rgb(42,205,255)',snow:'rgb(7,81,255)',bolt:'rgb(255,218,54)'},
+ 'Cedar':{sun:'rgb(255,236,166)',clouds:'rgb(0,0,0)',rain:'rgb(124,176,172)',snow:'rgb(159,147,174)',bolt:'rgb(255,236,166)'},
+ 'Chroma':{edition:'RARE',sun:'rgb(255,178,0)',clouds:'rgb(200,200,200)',rain:'rgb(70,155,255)',snow:'rgb(176,148,255)',bolt:'rgb(255,185,34)'},
+ 'Depth':{edition:'RARE',dark:'rgb(204,204,204)',sun:'rgb(102,102,102)',clouds:'rgb(178,178,178)',rain:'rgb(102,102,102)',snow:'rgb(153,153,153)',bolt:'rgb(102,102,102)'},
+ 'Graphite':{clouds:'rgb(200,200,200)',rain:'rgb(38,183,255)',snow:'rgb(176,148,255)',bolt:'rgb(255,185,34)'},
+ 'Guava':{edition:'RARE',clouds:'rgb(255,162,95)',rain:'rgb(0,224,213)',snow:'rgb(255,255,255)',bolt:'rgb(255,255,255)'},
+ 'Karat':{sun:'rgb(219,174,69)',clouds:'rgb(196,180,169)',rain:'rgb(145,181,215)',snow:'rgb(190,172,212)',bolt:'rgb(219,174,69)'},
+ 'Monsters':{clouds:'rgb(0,0,0)',rain:'rgb(101,218,234)',snow:'rgb(199,170,237)',bolt:'rgb(255,178,0)'},
+ 'Normal':{edition:'RARE',dark:'rgb(255,255,255)',field:'rgb(128,128,255)',clouds:'rgb(128,13,185)',rain:'rgb(128,207,229)',snow:'rgb(128,128,255)',bolt:'rgb(128,242,185)'},
+ 'Opal':{dark:'rgb(20,10,64)',clouds:'rgb(160,177,228)',rain:'rgb(0,229,255)',snow:'rgb(176,148,255)',bolt:'rgb(255,255,255)'},
+ 'Persimmon':{edition:'RARE',clouds:'rgb(255,160,141)',rain:'rgb(0,224,213)',snow:'rgb(255,255,255)',bolt:'rgb(255,255,255)'},
+ 'Mem / Presstube':{sun:'rgb(255,178,0)',clouds:'rgb(200,200,200)',rain:'rgb(38,183,255)',snow:'rgb(176,148,255)',bolt:'rgb(255,185,34)'},
+ 'Sesame':{edition:'RARE',clouds:'rgb(40,38,36)',rain:'rgb(255,255,255)',snow:'rgb(255,255,255)',bolt:'rgb(255,255,255)'},
+ 'Wireframe':{edition:'LEGENDARY',sun:'rgb(255,31,44)',clouds:'rgb(178,178,178)',rain:'rgb(38,183,255)',snow:'rgb(176,148,255)',bolt:'rgb(255,185,34)'}
+};
+THEMES.forEach(function(t){ var x = THEME_EXTRA[t.name]; if (!x) return;
+  ['sun','dark','clouds','rain','snow','bolt','edition','field'].forEach(function(k){ if (x[k]) t[k]=x[k]; }); });
+themeGrid.querySelectorAll('.theme-card').forEach(function(card, i){
+  var t = THEMES[i]; if (!t) return;
+  card.querySelector('.ed').textContent = t.edition+' EDITION';
+  if (t.field){ card.style.background = t.field; card.style.color = lum(t.field) > 0.55 ? '#111' : '#fff'; }
+  card.querySelector('.sw').innerHTML = [t.light,t.dark,t.sun,t.clouds,t.rain,t.snow,t.bolt].map(function(c){ return '<i style="background:'+c+'"></i>'; }).join('');
+  card.addEventListener('click', function(){
+    CUR_THEME = t.name;
+    applyTheme(t);
+  });
+});
+/* Selecting a theme reskins the WHOLE app live: field, sun, digits, clouds, rain colour. */
+function applyTheme(t){
+  var darkBg = lum(t.light) < 0.35 && lum(t.dark) < 0.35;
+  var digitCol = darkBg ? '#FFFFFF' : t.dark;
+  document.documentElement.style.setProperty('--red', t.sun);
+  document.documentElement.style.setProperty('--ink', t.dark);
+  document.documentElement.style.setProperty('--cyan', t.rain || '#26B7FF');
+  var ms = document.getElementById('main-screen');
+  ms.style.setProperty('--field', t.light);
+  if (ms.classList.contains('night')){ ms.style.background = 'rgb('+(THEME_ANIM[t.name]||THEME_ANIM['Graphite']).night+')'; }
+  else { ms.style.background = t.field || t.light; }
+  var giant = document.querySelector('#main-screen .giant');
+  if (giant && !ms.classList.contains('night')){
+    giant.style.backgroundImage = 'linear-gradient(180deg, '+t.sun+' 0%, '+t.sun+' 5%, '+digitCol+' 19%, '+digitCol+' 100%)';
+  }
+  var gunder = document.querySelector('#main-screen .giant-under');
+  if (gunder && !ms.classList.contains('night')) gunder.style.color = digitCol;
+  var cond = document.getElementById('cond-main'); if (cond) cond.style.color = digitCol;
+  var city = document.querySelector('.topbar .city'); if (city) city.style.color = digitCol;
+  var core = document.querySelector('.sun-core');
+  if (core && !document.getElementById('sun-disc').classList.contains('moon')){
+    core.style.background = 'radial-gradient(circle at 50% 40%, '+t.sun+' 0%, '+t.sun+' 62%, '+t.sun+' 100%)';
+  }
+  var disc = document.getElementById('sun-disc');
+  if (disc && !disc.classList.contains('moon')) disc.style.background = 'radial-gradient(circle at 50% 40%, '+t.sun+' 0%, '+t.sun+' 58%, '+t.sun+' 100%)';
+  var cloudCol = t.clouds || '#101010';
+  document.querySelectorAll('.c-puff i').forEach(function(el){ el.style.background = cloudCol; });
+  document.querySelectorAll('.pc-ball').forEach(function(el){ el.style.background = cloudCol; });
+  document.querySelectorAll('.cloud-cluster i').forEach(function(el){ el.style.background = cloudCol; });
+  document.querySelectorAll('.week-strip .hi').forEach(function(el){ el.style.color = digitCol; });
+  document.querySelectorAll('.model-sun').forEach(function(el){ el.style.background = 'radial-gradient(circle at 50% 40%, '+t.sun+' 0%, '+t.sun+' 58%, '+t.sun+' 100%)'; });
+  document.getElementById('menu-theme-val').textContent = t.name+' · '+titleCase(t.edition);
+}
+function fogFlash(rgb){
+  var f = document.getElementById('scene-fog'); if (!f) return;
+  f.style.transition = 'none'; f.style.background = 'rgb('+rgb+')'; f.style.opacity = '0.45';
+  void f.offsetWidth;
+  f.style.transition = 'opacity .9s ease'; f.style.opacity = '0';
+}
+
+/* ============ HAPTICS substitute (.ahap has no web equivalent) ============ */
+function haptic(open){
+  if (navigator.vibrate){ try { navigator.vibrate(open ? 38 : 24); } catch(e){} }
+  var app = document.getElementById('app');
+  app.classList.remove('haptic-pulse','haptic-pulse-short'); void app.offsetWidth;
+  app.classList.add(open ? 'haptic-pulse' : 'haptic-pulse-short');
+  setTimeout(function(){ app.classList.remove('haptic-pulse','haptic-pulse-short'); }, 420);
+}
+
+/* ============ SOUND — WebAudio synth equivalents of the 83 .caf categories (NOT the real files) ============ */
+var AC = null, soundOn = false, ambNodes = null;
+function ac(){
+  if (!AC){ var Ctor = window.AudioContext || window.webkitAudioContext; if (!Ctor) return null; AC = new Ctor(); }
+  if (AC.state === 'suspended') AC.resume();
+  return AC;
+}
+function tone(freq, dur, type, vol, delay, slideTo){
+  if (!soundOn) return; var c = ac(); if (!c) return;
+  try {
+    var t0 = c.currentTime + (delay||0), o = c.createOscillator(), g = c.createGain();
+    o.type = type||'sine'; o.frequency.setValueAtTime(freq, t0);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t0+dur);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol||0.1, t0+0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
+    o.connect(g); g.connect(c.destination); o.start(t0); o.stop(t0+dur+0.05);
+  } catch(e){}
+}
+function noiseBurst(dur, vol, freq){
+  if (!soundOn) return; var c = ac(); if (!c) return;
+  try {
+    var len = Math.floor(c.sampleRate*dur), buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
+    for (var i=0;i<len;i++) d[i] = (Math.random()*2-1)*(1-i/len);
+    var src = c.createBufferSource(); src.buffer = buf;
+    var f = c.createBiquadFilter(); f.type='lowpass'; f.frequency.value = freq||900;
+    var g = c.createGain(); g.gain.value = vol||0.15;
+    src.connect(f); f.connect(g); g.connect(c.destination); src.start();
+  } catch(e){}
+}
+function sndSun(){ tone(523,.12,'sine',.11,0); tone(659,.12,'sine',.11,.07); tone(784,.18,'sine',.11,.14); }
+function sndMoon(){ tone(196,.22,'sine',.11,0); tone(147,.32,'sine',.09,.12); }
+function sndSpin(){ tone(180,.35,'sawtooth',.045,0,920); }
+function sndExplode(){ noiseBurst(.3,.16,700); tone(82,.32,'sine',.18,0); }
+function sndCloseS(){ tone(320,.1,'sine',.07,0); tone(180,.16,'sine',.07,.07); }
+function sndMenuS(){ tone(1150,.05,'square',.04,0); }
+function sndDayS(){ tone(880,.05,'sine',.06,0); }
+function sndModelS(){ tone(440,.07,'triangle',.08,0); tone(587,.09,'triangle',.08,.06); }
+function startAmb(){
+  if (ambNodes || !soundOn) return; var c = ac(); if (!c) return;
+  try {
+    var len = c.sampleRate*2, buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
+    for (var i=0;i<len;i++) d[i] = Math.random()*2-1;
+    var src = c.createBufferSource(); src.buffer = buf; src.loop = true;
+    var f = c.createBiquadFilter(); f.type='lowpass'; f.frequency.value = 420;
+    var g = c.createGain(); g.gain.value = 0.012;
+    var lfo = c.createOscillator(); lfo.frequency.value = 0.09;
+    var lg = c.createGain(); lg.gain.value = 0.005;
+    lfo.connect(lg); lg.connect(g.gain);
+    src.connect(f); f.connect(g); g.connect(c.destination); src.start(); lfo.start();
+    ambNodes = {src:src, lfo:lfo};
+  } catch(e){}
+}
+function stopAmb(){ if (!ambNodes) return; try { ambNodes.src.stop(); ambNodes.lfo.stop(); } catch(e){} ambNodes = null; }
+document.getElementById('sw-sound').addEventListener('click', function(){
+  soundOn = this.classList.contains('on');
+  if (soundOn){ ac(); startAmb(); sndMenuS(); } else { stopAmb(); }
+});
+
+/* ============ ONE SCENE CLOCK — birds (bird_0/1/2), cloud nodes, orbit arcs ============ */
+var sceneCloudsEl = document.getElementById('scene-clouds'), CP = [];
+(function buildSceneClouds(){
+  /* AppConfig Cloud-numberOfSpheres [30, 5, 1]: the main cloud layer is exactly 30 spheres — 10 clusters x 3 */
+  var layers = [ {n:5, sc:0.55, far:true}, {n:3, sc:0.95, far:false}, {n:2, sc:1.4, far:false} ];
+  layers.forEach(function(L, li){
+    for (var i=0;i<L.n;i++){
+      var p = document.createElement('div'); p.className = 'c-puff'+(L.far?' far':''); p.style.zIndex = L.far ? 1 : (li===1 ? 3 : 6);
+      var s = L.sc;
+      p.innerHTML = '<i style="left:0;top:'+(15*s)+'px;width:'+(48*s)+'px;height:'+(48*s)+'px"></i>'+
+                    '<i style="left:'+(27*s)+'px;top:0;width:'+(64*s)+'px;height:'+(64*s)+'px"></i>'+
+                    '<i style="left:'+(65*s)+'px;top:'+(19*s)+'px;width:'+(42*s)+'px;height:'+(42*s)+'px"></i>';
+      sceneCloudsEl.appendChild(p);
+      CP.push({ el:p, x:Math.random()*135-18, y:3+Math.random()*48, sp:(0.08+Math.random()*0.07)*s });
+    }
+  });
+})();
+var BIRDS = [
+  { el:document.getElementById('bird-0'), per:23000, ph:0.0,  yb:13, amp:10 },
+  { el:document.getElementById('bird-1'), per:31000, ph:0.38, yb:22, amp:14 },
+  { el:document.getElementById('bird-2'), per:39000, ph:0.66, yb:7,  amp:8 }
+];
+var orbitEl = document.querySelector('.orbits'), orbitAng = 0, lastTick = 0;
+function sceneTick(t){
+  requestAnimationFrame(sceneTick);
+  if (!lastTick) lastTick = t;
+  var dt = Math.min(60, t-lastTick); lastTick = t;
+  if (document.body.classList.contains('motion-off')) return;
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  var w = scene3d.clientWidth || 360, h = scene3d.clientHeight || 420;
+  for (var i=0;i<CP.length;i++){ var c = CP[i];
+    c.x += c.sp * dt * 0.055; if (c.x > 118) c.x = -26;
+    c.el.style.transform = 'translate('+(c.x/100*w).toFixed(1)+'px,'+(c.y/100*h).toFixed(1)+'px)';
+  }
+  for (var j=0;j<BIRDS.length;j++){ var b = BIRDS[j], pr = ((t/b.per)+b.ph) % 1;
+    var bx = (-0.12 + pr*1.26) * w, by = (b.yb/100*h) + Math.sin(pr*Math.PI*2)*b.amp;
+    b.el.style.opacity = (pr<0.03 || pr>0.97) ? '0' : '1';
+    b.el.style.transform = 'translate('+bx.toFixed(1)+'px,'+by.toFixed(1)+'px)';
+  }
+  /* one clock drives the whole picture: sun drift + digit parallax move WITH birds/clouds */
+  var gw = document.querySelector('.giant-wrap');
+  if (gw) gw.style.translate = '0 '+(Math.sin(t*0.00045+1.2)*3).toFixed(1)+'px';
+}
+requestAnimationFrame(sceneTick);
+
+/* ============ SOURCE REQUIRED note ============ */
+function updateSourceReq(){
+  var el = document.getElementById('source-req-note'); if (!el) return;
+  el.textContent = (curSource === 'AccuWeather') ? '' : 'POLLEN — ACCUWEATHER SOURCE REQUIRED (active source: '+curSource+')';
+}
+srcList.querySelectorAll('.src-item').forEach(function(b){ b.addEventListener('click', updateSourceReq); });
+updateSourceReq();
+
+/* ============ EVENTS (Events.scn + strings) ============ */
+var EVENTS = [
+ ['OCT 31','Boo!','HALLOWEEN'],['JAN 1','Happy New Year!','NEW YEAR'],['JUL 4','Freedom, Baby!','INDEPENDENCE DAY'],
+ ['MAR 10',"It's a Mario Day!",'MARIO DAY'],['NOV 18','Oh, Golly!','MICKEY DAY'],['MAR 14','Happy 3.1415926535…','PI DAY'],
+ ['APR 22','Earth Day','EARTH DAY'],['MAR 20','Spring Equinox','EQUINOX'],['SEP 22','Fall Equinox','EQUINOX'],
+ ['JUN 21','Summer Solstice','SOLSTICE'],['DEC 21','Winter Solstice','SOLSTICE'],['FEB 14','Feel the Love',"VALENTINE'S"]
+];
+var evList = document.getElementById('event-list'), evOverlay = document.getElementById('event-overlay');
+EVENTS.forEach(function(ev){
+  var b = document.createElement('button'); b.className = 'ev-row';
+  b.innerHTML = '<span class="ed">'+ev[0]+'</span><span class="eg">'+ev[1]+'</span>';
+  b.addEventListener('click', function(){
+    closeSheets();
+    document.getElementById('ev-big').textContent = ev[1];
+    document.getElementById('ev-sub').textContent = ev[2]+' · '+ev[0]+' · EVENTS.SCN';
+    evOverlay.classList.add('open');
+  });
+  evList.appendChild(b);
+});
+evOverlay.addEventListener('click', function(){ evOverlay.classList.remove('open'); });
+
+/* ============ APP ICONS (14 — no graphite) ============ */
+var ICONS = [
+ ['andy','rgb(255,178,0)','rgb(255,255,255)'],['bricks','rgb(255,255,255)','rgb(255,218,54)'],
+ ['cedar','rgb(124,176,172)','rgb(255,236,166)'],['chroma','rgb(255,255,255)','rgb(255,178,0)'],
+ ['depth','rgb(255,255,255)','rgb(102,102,102)'],['guava','rgb(255,231,51)','rgb(255,255,255)'],
+ ['karat','rgb(255,255,255)','rgb(219,174,69)'],['monster','rgb(255,255,255)','rgb(255,178,0)'],
+ ['normal','rgb(255,255,255)','rgb(242,128,185)'],['opal','rgb(255,255,255)','rgb(160,177,228)'],
+ ['persimmon','rgb(232,224,216)','rgb(255,255,255)'],['presstube','rgb(255,255,255)','rgb(255,178,0)'],
+ ['sesame','rgb(70,67,65)','rgb(255,255,255)'],['wireframe','rgb(255,255,255)','rgb(255,31,44)']
+];
+var iconGrid = document.getElementById('icon-grid');
+ICONS.forEach(function(ic){
+  var b = document.createElement('button'); b.className = 'appicon';
+  b.innerHTML = '<span class="box" style="background:'+ic[1]+'"><svg width="34" height="30" viewBox="0 0 36 32"><circle cx="24" cy="11" r="8" fill="'+ic[2]+'"/><g fill="#282828"><circle cx="11" cy="21" r="6"/><circle cx="18" cy="17" r="7.5"/><circle cx="25" cy="21" r="5.5"/></g></svg></span><span class="nm">'+ic[0]+'</span>';
+  b.addEventListener('click', function(){
+    iconGrid.querySelectorAll('.appicon').forEach(function(x){ x.classList.remove('sel'); });
+    b.classList.add('sel');
+    document.getElementById('icon-note').textContent = 'Alternate icon selected: '+ic[0]+'AppIcon (preview only — the home-screen icon itself cannot change on the web).';
+  });
+  iconGrid.appendChild(b);
+});
+
+/* ============ LOCATIONS — search / reorder / delete ============ */
+var LOCS = [ {name:'Lisbon, Portugal', tag:'FROM THE VIDEO'}, {name:'Seattle, USA', tag:'DEMODATA FIXTURE'} ];
+var CANDIDATES = ['Porto, Portugal','London, UK','New York, USA','Tokyo, Japan','Sydney, Australia','Reykjavík, Iceland','Khairpur, Pakistan'];
+var locList = document.getElementById('loc-list'), locResults = document.getElementById('loc-results'), locSearch = document.getElementById('loc-search');
+function renderLocs(){
+  locList.innerHTML = '';
+  LOCS.forEach(function(l, i){
+    var row = document.createElement('div'); row.className = 'loc-row';
+    row.innerHTML = '<span class="ln">'+l.name+'<span class="lt">'+l.tag+'</span></span>';
+    var up = document.createElement('button'); up.textContent = '↑'; up.setAttribute('aria-label','Move '+l.name+' up');
+    var dn = document.createElement('button'); dn.textContent = '↓'; dn.setAttribute('aria-label','Move '+l.name+' down');
+    var del = document.createElement('button'); del.textContent = '✕'; del.setAttribute('aria-label','Delete '+l.name);
+    up.addEventListener('click', function(){ if (i>0){ var t=LOCS[i-1]; LOCS[i-1]=LOCS[i]; LOCS[i]=t; renderLocs(); } });
+    dn.addEventListener('click', function(){ if (i<LOCS.length-1){ var t=LOCS[i+1]; LOCS[i+1]=LOCS[i]; LOCS[i]=t; renderLocs(); } });
+    del.addEventListener('click', function(){ LOCS.splice(i,1); renderLocs(); });
+    row.appendChild(up); row.appendChild(dn); row.appendChild(del);
+    locList.appendChild(row);
+  });
+  if (!LOCS.length) locList.innerHTML = '<p class="note">No Matching Locations</p>';
+}
+locSearch.addEventListener('input', function(){
+  var q = locSearch.value.trim().toLowerCase(); locResults.innerHTML = '';
+  if (!q) return;
+  var hits = CANDIDATES.filter(function(c){ return c.toLowerCase().indexOf(q) >= 0 && !LOCS.some(function(l){ return l.name===c; }); });
+  if (!hits.length){ locResults.innerHTML = '<p class="note" style="margin-top:8px">No Matching Locations</p>'; return; }
+  hits.forEach(function(c){
+    var b = document.createElement('button'); b.className = 'src-item';
+    b.innerHTML = '<span>'+c+'</span><span class="def">TAP TO ADD</span>';
+    b.addEventListener('click', function(){ LOCS.push({name:c, tag:'ADDED VIA SEARCH'}); locSearch.value=''; locResults.innerHTML=''; renderLocs(); });
+    locResults.appendChild(b);
+  });
+});
+renderLocs();
+
+/* ============ SHARE — copy summary ============ */
+document.getElementById('share-copy').addEventListener('click', function(){
+  var ta = document.getElementById('share-text'), st = document.getElementById('share-status');
+  function done(){ st.textContent = 'Copied — paste it anywhere to share Lisbon’s weather.'; }
+  if (navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(ta.value).then(done, function(){ ta.select(); document.execCommand('copy'); done(); }); }
+  else { ta.select(); try { document.execCommand('copy'); } catch(e){} done(); }
+});
+
+/* ============ DEMODATA — minutely graph (full 60), daily cards, hourly table ============ */
+(function(){
+  var MINP = [0,0.1,0.11,0.12,0.14,0.16,0.19,0.22,0.25,0.27,0.29,0.30,0.31,0.32,0.33,0.34,0.34,0.34,0.33,0.32,0.31,0.29,0.27,0.25,0.23,0.20,0.17,0.14,0.12,0.10,0.08,0.07,0.06,0.05,0.04,0.03,0.02,0.01,0.01,0];
+  while (MINP.length < 60) MINP.push(0);
+  var W=340, H=118, pL=6, pR=26, pT=8, pB=16, pw=W-pL-pR, ph=H-pT-pB;
+  function X(i){ return pL + i/59*pw; }
+  function Yp(v){ return pT + (0.35-v)/0.35*ph; }
+  function Yt(v){ return pT + (58-v)/7*ph; }
+  var svg = '<svg viewBox="0 0 '+W+' '+H+'" width="100%" height="118" role="img" aria-label="Minutely precipitation and temperature, next 60 minutes">';
+  [0.34,0.17,0].forEach(function(a){ svg += '<text x="'+(W-2)+'" y="'+(Yp(a)+3)+'" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="9" fill="#26B7FF">'+a.toFixed(2)+'</text>'; });
+  var pts = MINP.map(function(v,i){ return X(i).toFixed(1)+','+Yp(v).toFixed(1); });
+  svg += '<path d="M'+pts.join(' L')+' L'+X(59)+','+(pT+ph)+' L'+X(0)+','+(pT+ph)+' Z" fill="#26B7FF" opacity="0.45"/>';
+  svg += '<path d="M'+pts.join(' L')+'" fill="none" stroke="#26B7FF" stroke-width="2"/>';
+  var tp = [];
+  for (var i=3;i<60;i++){ tp.push(X(i).toFixed(1)+','+Yt(57.49-(i-3)*0.1).toFixed(1)); }
+  svg += '<path d="M'+tp.join(' L')+'" fill="none" stroke="#111" stroke-width="1.6" stroke-dasharray="4 3"/>';
+  [0,15,30,45,59].forEach(function(m){ svg += '<text x="'+X(m)+'" y="'+(pT+ph+12)+'" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#8a8a8a">'+m+'m</text>'; });
+  svg += '<text x="'+pL+'" y="'+(pT+6)+'" font-family="JetBrains Mono, monospace" font-size="9" fill="#111">TEMP 57.49° → 51.79°</text>';
+  svg += '</svg>';
+  document.getElementById('minutely-graph').innerHTML = svg;
+
+  var DD = [
+    ['DAY 0 · CLOUDY',40,50,40,50,'THIRD QUARTER',50,'RAIN 0.1','20–30 MPH'],
+    ['DAY 1 · CLEAR',40,77,40,60,'NEW',50,'RAIN 0.1','4–10 MPH'],
+    ['DAY 2 · THUNDERSTORM',-55,74,-55,60,'NEW',75,'RAIN 0.1 · TYPE RAIN','35 MPH'],
+    ['DAY 3 · FOG',50,53,50,53,'NEW',75,'RAIN 0.1','4–10 MPH'],
+    ['DAY 4 · SNOW',0,8,0,8,'NEW',75,'RAIN 0 · SNOW 0.1 · TYPE SNOW','4–10 MPH'],
+    ['DAY 5 · CLOUDY',55,62,55,62,'NEW',100,'RAIN 0.1','4–10 MPH'],
+    ['DAY 6 · RAIN',60,72,60,72,'NEW',100,'RAIN 0.1 · TYPE RAIN','4–10 MPH'],
+    ['DAY 7 · PARTLY CLOUDY',70,85,70,85,'NEW',50,'RAIN 0.1','4–10 MPH']
+  ];
+  document.getElementById('demod-daily').innerHTML = DD.map(function(d){
+    return '<div class="demod-card"><div class="dt">'+d[0]+'</div><div class="dl2">LO '+d[1]+'° · HI '+d[2]+'° · FEELS '+d[3]+'°/'+d[4]+'° · MOON '+d[5]+' · CLOUD '+d[6]+'%<br>'+d[7]+' · WIND '+d[8]+'</div></div>';
+  }).join('');
+
+  var HH = [
+    ['freezingRainHeavy',55,91,4,'RAIN 0.0'],['freezingRain',51,80,4,'RAIN 0.1'],['freezingRainLight',52,80,4,'—'],
+    ['freezingDrizzle',50,80,4,'—'],['icePelletsHeavy',50,90,4,'—'],['icePellets',50,80,4,'—'],['icePelletsLight',50,80,4,'—'],
+    ['snowHeavy',50,100,70,'SNOW 0.1'],['snow',50,50,4,'—'],['snowLight',50,80,4,'SNOW 0.1'],['flurries',50,40,4,'SNOW 0.1'],
+    ['thunderstorm',50,95,30,'—'],['rainHeavy',50,92,4,'—'],['rain',50,90,4,'—'],['rainLight',50,70,4,'—'],
+    ['drizzle',50,25,4,'—'],['fog',50,10,4,'—'],['fogLight',50,100,4,'—'],['cloudy',50,100,4,'—'],
+    ['mostlyCloudy',50,80,4,'—'],['partlyCloudy',50,50,4,'—'],['mostlyClear',70,20,4,'—'],['clear',50,10,4,'—'],
+    ['cloudy',50,10,4,'—'],['cloudy',80,10,4,'—'],['cloudy',50,10,4,'—']
+  ];
+  var rows = HH.map(function(hh, i){
+    return '<tr><td>'+i+'</td><td>'+hh[0]+'</td><td>'+hh[1]+'°</td><td>'+hh[2]+'%</td><td>'+hh[3]+'</td><td>'+hh[4]+'</td></tr>';
+  }).join('');
+  document.getElementById('demod-hourly').innerHTML = '<table class="hourly-table"><tr><th>HR</th><th>CODE</th><th>TEMP</th><th>CLOUD</th><th>WIND</th><th>PRECIP</th></tr>'+rows+'</table>';
+})();
+
+/* init */
+renderSlider();
+})();
+</script>
+</body>
+</html>
